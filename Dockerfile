@@ -1,8 +1,15 @@
 FROM python:3.12-alpine
 
+COPY main.py /app/main.py
+COPY opensense.py /app/opensense.py
 COPY version.txt /app/version.txt
-COPY print_version.py /app/print_version.py
+COPY requirements.txt /requirements.txt
 
 WORKDIR /app
 
-CMD ["python", "print_version.py"]
+RUN pip install --no-cache-dir -r /requirements.txt
+
+ENV FLASK_APP=main.py
+
+ENTRYPOINT [ "flask" ]
+CMD [ "run", "--host=0.0.0.0" ]
