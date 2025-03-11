@@ -1,5 +1,5 @@
 name: hadolint
-on: pull_request
+on: [push]
 
 jobs:
   hadolint:
