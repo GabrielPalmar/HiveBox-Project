@@ -31,7 +31,7 @@ def get_temperature():
                 if last_measurement is not None and 'value' in last_measurement:
                     last_measurement_int = float(last_measurement['value'])
                     temp_list.append(last_measurement_int)
-                    
+
     total_sum = sum(temp_list)
     average = total_sum / len(temp_list) if temp_list else 0
 
