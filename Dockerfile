@@ -5,7 +5,7 @@ RUN addgroup -S appgroup && adduser -S -G appgroup appuser
 WORKDIR /app
 
 COPY main.py opensense.py version.txt requirements.txt /app/
-RUN apt-get install -y curl
+
 RUN pip install --no-cache-dir -r /app/requirements.txt && \
     chown -R appuser:appgroup /app
 
