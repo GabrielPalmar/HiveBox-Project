@@ -26,14 +26,12 @@ def get_temperature():
 
     for sensor_list in res:
         for measure in sensor_list:
-            if measure.get('title') == "Temperatur":
-                if 'lastMeasurement' in measure:
-                    last_measurement = measure['lastMeasurement']
-                    if last_measurement is not None:
-                        if 'value' in last_measurement:
-                            last_measurement_int = float(last_measurement['value'])
-                            temp_list.append(last_measurement_int)
-
+            if measure.get('title') == "Temperatur" and 'lastMeasurement' in measure:
+                last_measurement = measure['lastMeasurement']
+                if last_measurement is not None and 'value' in last_measurement:
+                    last_measurement_int = float(last_measurement['value'])
+                    temp_list.append(last_measurement_int)
+                    
     total_sum = sum(temp_list)
     average = total_sum / len(temp_list) if temp_list else 0
 
