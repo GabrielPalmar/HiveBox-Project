@@ -57,6 +57,5 @@ def run_all_tests():
     return version_success and temperature_success
 
 if __name__ == "__main__":
-    success = run_all_tests()
-    sys.exit(0 if success else 1)
-    
+    main_success = run_all_tests()
+    sys.exit(0 if main_success else 1)
