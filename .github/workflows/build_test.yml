@@ -1,9 +1,15 @@
 name: Build_Test
 
-on: [push]
+on: 
+  push:
+    branches: 
+      - main
+  pull_request:
+    branches: 
+      - main
 
 jobs:
-    docker_build__test:
+    docker_build_test:
         runs-on: ubuntu-24.04
         name: Docker_build
         steps:
