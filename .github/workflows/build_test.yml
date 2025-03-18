@@ -15,7 +15,7 @@ jobs:
           run: docker run -d -p 5000:5000 pommed3rre/hivebox:$(cat version.txt)
           
         - name: Set up Python for testing
-          uses: actions/setup-python@v4
+          uses: actions/setup-python@v5
           with:
                 python-version: '3.12'
         
