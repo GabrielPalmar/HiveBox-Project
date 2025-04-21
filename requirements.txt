@@ -273,6 +273,3 @@ zope-interface==7.2 \
     # via
     #   -r requirements.in
     #   datetime
-
-setuptools==76.1.0 \
-    --hash=sha256:4959B9AD482ADA2BA2320C8F1A8D8481D4D8D668908A7A1B84D987375CD7F5BD
