@@ -1,7 +1,17 @@
 '''This module contains the test cases for the opensense module.'''
 import sys
 import re
+import os
 import requests
+import vcr
+
+API_HOST = os.environ.get('API_HOST', 'http://127.0.0.1:5000')
+
+my_vcr = vcr.VCR(
+    cassette_library_dir='fixtures/vcr_cassettes',
+    record_mode='once',
+    match_on=['uri', 'method'],
+)
 
 def make_request(url, expected_pattern):
     '''Reusable function to make requests and assert responses.'''
@@ -25,9 +35,10 @@ def make_request(url, expected_pattern):
         print(f"❌ TEST FAILED: {str(e)}")
         return False, None
 
+@my_vcr.use_cassette('version.yaml')
 def test_get_version():
     '''Function to test the get_version function from the opensense module.'''
-    url = "http://127.0.0.1:5000/version"
+    url = f"{API_HOST}/version"
     pattern = r"Current app version: (\d+\.\d+\.\d+)"
     version_success, match = make_request(url, pattern)
 
@@ -37,9 +48,10 @@ def test_get_version():
 
     return version_success
 
+@my_vcr.use_cassette('temperature.yaml')
 def test_get_temperature():
     '''Function to test the get_temperature function from the opensense module.'''
-    url = "http://127.0.0.1:5000/temperature"
+    url = f"{API_HOST}/temperature"
     pattern = r"Average temperature: (\d+\.\d+) °C"
     temperature_success, match = make_request(url, pattern)
 

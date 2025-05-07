@@ -1,0 +1,32 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.31.0
+    method: GET
+    uri: http://127.0.0.1:5000/temperature
+  response:
+    body:
+      string: "Average temperature: 8.06 \xB0C\n"
+    headers:
+      Connection:
+      - close
+      Content-Length:
+      - '30'
+      Content-Type:
+      - text/html; charset=utf-8
+      Date:
+      - Tue, 06 May 2025 18:04:57 GMT
+      Server:
+      - Werkzeug/3.0.1 Python/3.12.3
+    status:
+      code: 200
+      message: OK
+version: 1
