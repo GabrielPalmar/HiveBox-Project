@@ -29,6 +29,7 @@ jobs:
           pip install pylint
           pip install flask
           pip install requests
+          pip install vcrpy
       - name: Analysing the code with pylint
         run: |
           pylint $(git ls-files '*.py')
