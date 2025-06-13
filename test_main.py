@@ -37,7 +37,7 @@ def make_request(url, expected_pattern):
 
 @my_vcr.use_cassette('version.yaml')
 def test_get_version():
-    '''Function to test the get_version function from the opensense module.'''
+    '''Function to test the get_version function.'''
     url = f"{API_HOST}/version"
     pattern = r"Current app version: (\d+\.\d+\.\d+)"
     version_success, match = make_request(url, pattern)
@@ -61,12 +61,25 @@ def test_get_temperature():
 
     return temperature_success
 
+@my_vcr.use_cassette('metrics.yaml')
+def test_get_metrics():
+    '''Function to test the metrics function.'''
+    url = f"{API_HOST}/metrics"
+    pattern = r"python_info"
+    metrics_success, match = make_request(url, pattern)
+
+    if metrics_success and match:
+        print("✅ Metrics test passed: Prometheus metrics found\n")
+
+    return metrics_success
+
 def run_all_tests():
     '''Run all tests and return overall success status.'''
     version_success = test_get_version()
     temperature_success = test_get_temperature()
+    metrics_success = test_get_metrics()
 
-    return version_success and temperature_success
+    return version_success and temperature_success and metrics_success
 
 if __name__ == "__main__":
     SUCCESS = run_all_tests()
