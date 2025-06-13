@@ -84,3 +84,4 @@ def run_all_tests():
 if __name__ == "__main__":
     SUCCESS = run_all_tests()
     sys.exit(0 if SUCCESS else 1)
+    
