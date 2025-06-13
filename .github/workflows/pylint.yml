@@ -30,6 +30,7 @@ jobs:
           pip install flask
           pip install requests
           pip install vcrpy
+          pip install prometheus_client
       - name: Analysing the code with pylint
         run: |
           pylint $(git ls-files '*.py')
