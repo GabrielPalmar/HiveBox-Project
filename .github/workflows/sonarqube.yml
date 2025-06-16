@@ -33,8 +33,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-            pip install coverage pytest
-            coverage run -m pytest test_main.py
+            coverage run -m test_main.py
             coverage xml          
             
       - name: Analyze with SonarQube
