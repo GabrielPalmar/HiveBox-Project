@@ -45,5 +45,6 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=GabrielPalmar_HiveBox-Project
+            -Dsonar.organization=gabrielpalmar
             -Dsonar.sources=.
             -Dsonar.exclusions=**/*test*/**,**/fixtures/**,**/__pycache__/**,**/venv/**,**/.git/**
