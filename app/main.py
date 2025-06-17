@@ -1,7 +1,7 @@
 '''Module containing the main function of the app.'''
 from flask import Flask, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-import opensense
+import app.opensense as opensense
 #import test_main
 
 app = Flask(__name__)
