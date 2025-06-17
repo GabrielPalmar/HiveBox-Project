@@ -18,7 +18,7 @@ jobs:
         steps:
         - uses: actions/checkout@v4
         - name: Build the Docker image
-          run: docker build . --file Dockerfile --tag pommed3rre/hivebox:$(cat version.txt)
+          run: docker build . --file docker/Dockerfile --tag pommed3rre/hivebox:$(cat version.txt)
 
         - name: Run Docker container
           run: docker run -d -p 5000:5000 pommed3rre/hivebox:$(cat version.txt)
@@ -36,7 +36,7 @@ jobs:
 
         - name: Run tests
           run: |
-            python test_main.py
+            python tests/test_main.py
             TEST_EXIT_CODE=$?
             if [ $TEST_EXIT_CODE -ne 0 ]; then
                 echo "Tests failed!"

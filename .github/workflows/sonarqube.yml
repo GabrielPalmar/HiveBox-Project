@@ -1,11 +1,12 @@
 name: SonarQube analysis
 
-on:
+on: 
   push:
-    branches: [ "main", "test" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches:
+      - main
 
 permissions:
   pull-requests: read
@@ -33,7 +34,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-            coverage run test_main.py
+            coverage run tests/test_main.py
             coverage xml          
             
       - name: Analyze with SonarQube
