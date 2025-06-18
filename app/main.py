@@ -10,7 +10,7 @@ app = Flask(__name__)
 def print_version():
     '''Function printing the current version of the app.'''
 
-    with open('version.txt', 'r', encoding="utf-8") as f:
+    with open('../version.txt', 'r', encoding="utf-8") as f:
         version = f.read()
 
     return f"Current app version: {version}\n"
