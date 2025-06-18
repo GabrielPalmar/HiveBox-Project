@@ -35,7 +35,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           # Run your test file directly with coverage
-          coverage run tests/test_main.py
+          coverage run --source=app tests/test_main.py
           coverage xml
         env:
           PYTHONPATH: ${{ github.workspace }}
