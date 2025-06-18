@@ -32,14 +32,13 @@ jobs:
           pip install -r requirements.txt
           pip install coverage vcrpy
 
-      - name: Run tests with coverage
+      - name: Run tests
         run: |
-          # Run your test file directly with coverage
-          coverage run --source=app tests/test_main.py
-          coverage xml
+          # Simple test execution without coverage measurement
+          python tests/test_main.py
         env:
           PYTHONPATH: ${{ github.workspace }}
-            
+
       - name: Analyze with SonarQube
         uses: SonarSource/sonarqube-scan-action@master
         env:
@@ -51,5 +50,4 @@ jobs:
             -Dsonar.organization=gabrielpalmar
             -Dsonar.sources=app
             -Dsonar.tests=tests
-            -Dsonar.python.coverage.reportPaths=coverage.xml
             -Dsonar.exclusions=**/fixtures/**,**/__pycache__/**,**/venv/**,**/.git/**,docker/**,k8s/**,scripts/**
