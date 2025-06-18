@@ -19,7 +19,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Disable shallow clones for better analysis
+          fetch-depth: 0
           
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,12 +30,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage pytest vcrpy
+          pip install coverage vcrpy
 
       - name: Run tests with coverage
         run: |
-            coverage run tests/test_main.py
-            coverage xml          
+          # Run your test file directly with coverage
+          coverage run tests/test_main.py
+          coverage xml
+        env:
+          PYTHONPATH: ${{ github.workspace }}
             
       - name: Analyze with SonarQube
         uses: SonarSource/sonarqube-scan-action@master
@@ -46,5 +49,7 @@ jobs:
           args: >
             -Dsonar.projectKey=GabrielPalmar_HiveBox-Project
             -Dsonar.organization=gabrielpalmar
-            -Dsonar.sources=.
-            -Dsonar.exclusions=**/*test*/**,**/fixtures/**,**/__pycache__/**,**/venv/**,**/.git/**
+            -Dsonar.sources=app
+            -Dsonar.tests=tests
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.exclusions=**/fixtures/**,**/__pycache__/**,**/venv/**,**/.git/**,docker/**,k8s/**,scripts/**
