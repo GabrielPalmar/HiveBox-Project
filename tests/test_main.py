@@ -1,4 +1,4 @@
-'''This module contains the test cases for the opensense module.'''
+'''This module contains the test cases for the main module.'''
 import sys
 import re
 import os
@@ -8,7 +8,7 @@ import vcr
 API_HOST = os.environ.get('API_HOST', 'http://127.0.0.1:5000')
 
 my_vcr = vcr.VCR(
-    cassette_library_dir='fixtures/vcr_cassettes',
+    cassette_library_dir='tests/fixtures/vcr_cassettes',
     record_mode='once',
     match_on=['uri', 'method'],
 )

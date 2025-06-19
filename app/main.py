@@ -1,16 +1,17 @@
 '''Module containing the main function of the app.'''
+import os
 from flask import Flask, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-import opensense
-#import test_main
+from app import opensense
 
 app = Flask(__name__)
 
 @app.route('/version')
 def print_version():
     '''Function printing the current version of the app.'''
+    version_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'version.txt')
 
-    with open('version.txt', 'r', encoding="utf-8") as f:
+    with open(version_file, 'r', encoding="utf-8") as f:
         version = f.read()
 
     return f"Current app version: {version}\n"
@@ -24,16 +25,6 @@ def get_temperature():
 def metrics():
     '''Function to return Prometheus metrics.'''
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
-
-### Test module ###
-# @app.route('/test')
-# def test():
-#     '''Function to test the app.'''
-#     success = test_main.run_all_tests()
-#     if success:
-#         return "All tests passed!\n", 200
-#     else:
-#         return "Some tests failed. Check the logs for details.\n", 500
 
 if __name__ == "__main__":
     app.run()

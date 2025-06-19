@@ -33,4 +33,8 @@ jobs:
           pip install prometheus_client
       - name: Analysing the code with pylint
         run: |
-          pylint $(git ls-files '*.py')
+          # Set PYTHONPATH so pylint can find the app module
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+          pylint app/ --ignore=__pycache__
+        env:
+          PYTHONPATH: ${{ github.workspace }}
