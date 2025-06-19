@@ -34,7 +34,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-            coverage run --source=app tests/test_main.py
+            coverage run --source=app tests/test_modules.py
             coverage xml
             coverage report
             

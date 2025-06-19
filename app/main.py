@@ -2,7 +2,6 @@
 from flask import Flask, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app import opensense
-#import test_main
 
 app = Flask(__name__)
 
@@ -24,16 +23,6 @@ def get_temperature():
 def metrics():
     '''Function to return Prometheus metrics.'''
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
-
-### Test module ###
-# @app.route('/test')
-# def test():
-#     '''Function to test the app.'''
-#     success = test_main.run_all_tests()
-#     if success:
-#         return "All tests passed!\n", 200
-#     else:
-#         return "Some tests failed. Check the logs for details.\n", 500
 
 if __name__ == "__main__":
     app.run()

@@ -1,4 +1,4 @@
-'''This module contains the test cases for the opensense module.'''
+'''This module contains the test cases for the main module.'''
 import sys
 import re
 import os
