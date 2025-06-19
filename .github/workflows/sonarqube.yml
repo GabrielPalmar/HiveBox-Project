@@ -34,10 +34,8 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-            coverage run --source=app tests/test_modules.py
-            coverage xml
-            coverage report
-            
+            pytest --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing tests/test_modules.py -v
+
       - name: Analyze with SonarQube
         uses: SonarSource/sonarqube-scan-action@master
         env:
