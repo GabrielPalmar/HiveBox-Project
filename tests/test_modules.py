@@ -1,10 +1,6 @@
 '''This module contains tests for the Flask and OpenSense modules.'''
-import os
-import sys
 from app.main import app
 from app import opensense
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 def test_app_exists():
     """Test that the Flask app exists"""
