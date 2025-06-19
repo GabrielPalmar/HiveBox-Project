@@ -34,8 +34,9 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-            coverage run tests/test_main.py
-            coverage xml          
+            coverage run --source=app tests/test_main.py
+            coverage xml
+            coverage report
             
       - name: Analyze with SonarQube
         uses: SonarSource/sonarqube-scan-action@master
@@ -46,5 +47,7 @@ jobs:
           args: >
             -Dsonar.projectKey=GabrielPalmar_HiveBox-Project
             -Dsonar.organization=gabrielpalmar
-            -Dsonar.sources=.
+            -Dsonar.sources=app
+            -Dsonar.tests=tests
+            -Dsonar.python.coverage.reportPaths=coverage.xml
             -Dsonar.exclusions=**/fixtures/**,**/__pycache__/**,**/venv/**,**/.git/**,docker/**,k8s/**,scripts/**
