@@ -4,7 +4,7 @@ RUN addgroup -S appgroup && adduser -S -G appgroup appuser
 
 WORKDIR /app
 
-COPY app/ /app/app/
+COPY /app/ /app/app/
 COPY version.txt requirements.txt /app/
 
 RUN pip install --no-cache-dir -r /app/requirements.txt --require-hashes && \

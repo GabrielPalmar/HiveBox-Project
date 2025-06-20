@@ -18,10 +18,10 @@ jobs:
         steps:
         - uses: actions/checkout@v4
         - name: Build the Docker image
-          run: docker build . --file docker/Dockerfile --tag pommed3rre/hivebox:$(cat version.txt)
+          run: docker build -t gabrielpalmar/hivebox:$(cat version.txt) .
 
         - name: Run Docker container
-          run: docker run -d -p 5000:5000 pommed3rre/hivebox:$(cat version.txt)
+          run: docker run -d -p 5000:5000 gabrielpalmar/hivebox:$(cat version.txt)
           
         - name: Set up Python for testing
           uses: actions/setup-python@v5

@@ -1,4 +1,4 @@
-'''This module contains the test cases for the main module.'''
+'''This module contains the test cases for the main module with VCR cassettes.'''
 import sys
 import re
 import os

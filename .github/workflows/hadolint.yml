@@ -12,11 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  hadolint:
+  hadolint-linting:
     runs-on: ubuntu-24.04
-    name: Hadolint
     steps:
       - uses: actions/checkout@v4
       - uses: hadolint/hadolint-action@v3.1.0
         with:  
-          dockerfile: docker/Dockerfile
+          dockerfile: Dockerfile
