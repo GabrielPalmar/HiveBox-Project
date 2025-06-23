@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: hivebox
-          image: ghcr.io/gabrielpalmar/hivebox:latest
+          image: ghcr.io/gabrielpalmar/hivebox:0.4.0
           ports:
             - containerPort: 5000
           env:
