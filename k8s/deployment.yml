@@ -4,6 +4,9 @@ metadata:
   name: hivebox
   labels:
     app: hivebox
+  annotations:
+    container.apparmor.security.beta.kubernetes.io/hivebox: runtime/default
+    seccomp.security.alpha.kubernetes.io/pod: runtime/default
 spec:
   replicas: 2
   selector:
