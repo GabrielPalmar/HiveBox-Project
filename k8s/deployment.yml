@@ -40,6 +40,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            secCompProfile:
+              type: RuntimeDefault
           resources:
             limits:
               memory: "512Mi"
