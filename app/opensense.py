@@ -37,7 +37,6 @@ def get_temperature():
 
     if average < 10:
         return f'Average temperature: {average:.2f} °C (Warning: Too cold)\n'
-    elif average > 10 and average <= 36:
+    if 10 < average <= 36:
         return f'Average temperature: {average:.2f} °C (Good)\n'
-    else:
-        return f'Average temperature: {average:.2f} °C (Warning: Too hot)\n'
+    return f'Average temperature: {average:.2f} °C (Warning: Too hot)\n'
