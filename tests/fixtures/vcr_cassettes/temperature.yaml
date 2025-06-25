@@ -14,18 +14,18 @@ interactions:
     uri: http://127.0.0.1:5000/temperature
   response:
     body:
-      string: "Average temperature: 8.06 \xB0C\n"
+      string: "Average temperature: 21.01 \xB0C (Good)\n"
     headers:
       Connection:
       - close
       Content-Length:
-      - '30'
+      - '38'
       Content-Type:
       - text/html; charset=utf-8
       Date:
-      - Tue, 06 May 2025 18:04:57 GMT
+      - Wed, 25 Jun 2025 17:21:04 GMT
       Server:
-      - Werkzeug/3.0.1 Python/3.12.3
+      - Werkzeug/3.1.3 Python/3.13.5
     status:
       code: 200
       message: OK
