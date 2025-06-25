@@ -35,4 +35,9 @@ def get_temperature():
     total_sum = sum(temp_list)
     average = total_sum / len(temp_list) if temp_list else 0
 
-    return f'Average temperature: {average:.2f} °C\n'
+    if average < 10:
+        return f'Average temperature: {average:.2f} °C (Warning: Too cold)\n'
+    elif average > 10 and average <= 36:
+        return f'Average temperature: {average:.2f} °C (Good)\n'
+    else:
+        return f'Average temperature: {average:.2f} °C (Warning: Too hot)\n'
