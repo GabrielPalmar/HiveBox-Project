@@ -1,4 +1,5 @@
 '''This module contains tests for the Flask and OpenSense modules.'''
+import re
 from app.main import app
 from app import opensense
 
@@ -29,4 +30,7 @@ def test_opensense_get_temperature():
     """Test that opensense.get_temperature returns a string"""
     result = opensense.get_temperature()
     assert isinstance(result, str)
-    assert "Average temperature:" in result
+    assert re.match(
+        r"Average temperature: (\d+\.\d{2}) °C \((Warning: Too cold|Good|Warning: Too hot)\)", 
+        result
+        )
