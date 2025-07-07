@@ -13,8 +13,6 @@ spec:
     metadata:
       labels:
         app: hivebox
-      annotations:
-        container.apparmor.security.beta.kubernetes.io/hivebox: runtime/default
     spec:
       securityContext:
         runAsNonRoot: true
