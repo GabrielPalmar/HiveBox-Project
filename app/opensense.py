@@ -1,10 +1,46 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
 from datetime import datetime, timezone, timedelta
+import os
 import requests
+import redis
 
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
+REDIS_DB = int(os.environ.get('REDIS_DB', 0))
+CACHE_TTL = int(os.environ.get('CACHE_TTL', 300))  
+
+try:
+    redis_client = redis.StrictRedis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        db=REDIS_DB,
+        decode_responses=True,
+        socket_connect_timeout=240,
+        socket_timeout=240
+        )
+
+    redis_client.ping()
+    REDIS_AVAILABLE = True
+    print("Connected to Redis successfully!")
+except (redis.ConnectionError, redis.TimeoutError) as e:
+    REDIS_AVAILABLE = False
+    print("Could not connect to Redis.")
 
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
+    cache_key = "temperature_data"
+
+    if REDIS_AVAILABLE:
+        try:
+            cached_data = redis_client.get(cache_key)
+            if cached_data:
+                print("Using cached data from Redis.")
+                return cached_data
+        except redis.RedisError as e:
+            print(f"Redis error: {e}. Proceeding without cache.")
+
+    print("Fetching new data from OpenSenseMap API...")
+
     # Ensuring that data is not older than 1 hour.
     subs_time = datetime.now(timezone.utc) - timedelta(hours=1)
     time_iso = subs_time.isoformat().replace("+00:00", "Z")
@@ -35,8 +71,18 @@ def get_temperature():
     total_sum = sum(temp_list)
     average = total_sum / len(temp_list) if temp_list else 0
 
-    if average < 10:
-        return f'Average temperature: {average:.2f} °C (Warning: Too cold)\n'
-    if 10 < average <= 36:
-        return f'Average temperature: {average:.2f} °C (Good)\n'
-    return f'Average temperature: {average:.2f} °C (Warning: Too hot)\n'
+    if average <= 10:
+        result = f'Average temperature: {average:.2f} °C (Warning: Too cold)\n'
+    elif 10 < average <= 36:
+        result = f'Average temperature: {average:.2f} °C (Good)\n'
+    else:
+        result = f'Average temperature: {average:.2f} °C (Warning: Too hot)\n'
+
+    if REDIS_AVAILABLE:
+        try:
+            redis_client.setex(cache_key, CACHE_TTL, result)
+            print("Data cached in Redis.")
+        except redis.RedisError as e:
+            print(f"Redis error while caching data: {e}")
+
+    return result

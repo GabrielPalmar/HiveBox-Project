@@ -11,7 +11,10 @@ RUN pip install --no-cache-dir -r /app/requirements.txt --require-hashes && \
     chown -R appuser:appgroup /app
 
 ENV FLASK_APP=app.main.py:app \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    REDIS_HOST=localhost \
+    REDIS_PORT=6379 \
+    CACHE_TTL=300
 
 USER appuser
 
