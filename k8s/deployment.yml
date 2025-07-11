@@ -26,9 +26,6 @@ spec:
           image: ghcr.io/gabrielpalmar/hivebox:0.4.0@sha256:31dccc066ffd02ef65850ed8125fc2dadf0bd65958fb49bee0517e40afab2e1c
           ports:
             - containerPort: 5000
-          env:
-            - name: FLASK_ENV
-              value: "production"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -63,6 +60,31 @@ spec:
           volumeMounts:
             - name: tmp-volume
               mountPath: /tmp
+        - name: valkey
+          image: valkey/valkey:8-alpine3.22@sha256:0d27f0bca0249f61d060029a6aaf2e16b2c417d68d02a508e1dfb763fa2948b4
+          ports:
+            - containerPort: 6379
+          command: ["valkey-server"]
+          args: ["--save", "", "--appendonly", "no"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: valkey-data
+              mountPath: /data
       volumes:
         - name: tmp-volume
+          emptyDir: {}
+        - name: valkey-data
           emptyDir: {}
