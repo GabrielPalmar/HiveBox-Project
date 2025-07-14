@@ -41,7 +41,7 @@ def get_temperature():
     print("Fetching new data from OpenSenseMap API...")
 
     # Ensuring that data is not older than 1 hour.
-    time_iso = datetime.now(timezone.utc) - timedelta(hours=1).isoformat().replace("+00:00", "Z")
+    time_iso = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
 
     params = {
         "date": time_iso,

@@ -20,11 +20,16 @@ For more information please refer to the Project webpage: [HiveBox](https://devo
 ## Technologies Used
 - Python (Flask, Prometheus, Redis, Requests)
 - Docker
-- Kubernetes
-- GitHub Actions
-- SonarQube
-- Terrascan
+- Kubernetes (Minikube, Kind)
+- Dependabot
+- GitHub Actions:
+    - SonarQube
+    - Terrascan
+    - Pylint
+    - Hadolint
 
 ## Development
 
 To adhere to industry standards, the Repository's Project section was used, leveraging the Kanban board to process tasks in an organized manner.
+
+[Kanban Board](https://github.com/users/GabrielPalmar/projects/1)
