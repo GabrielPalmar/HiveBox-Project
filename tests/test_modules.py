@@ -26,7 +26,6 @@ def test_metrics_endpoint():
     response = client.get('/metrics')
     assert response.status_code == 200
 
-# Add a simple test for the opensense module
 def test_opensense_get_temperature():
     """Test that opensense.get_temperature returns a string"""
     result = opensense.get_temperature()
@@ -63,3 +62,22 @@ def test_opensense_get_temperature_too_hot():
     with mock.patch('app.opensense.requests.get', return_value=mock_response(40)):
         result = opensense.get_temperature()
         assert 'Too hot' in result
+
+def test_opensense_cache_get():
+    """Test that cached data is used if available"""
+    with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+         mock.patch('app.opensense.redis_client.get', return_value="cached_result"), \
+         mock.patch('app.opensense.requests.get') as mock_requests:
+        result = opensense.get_temperature()
+        assert result == "cached_result"
+        mock_requests.assert_not_called()
+
+def test_opensense_cache_setex():
+    """Test that data is cached after fetching"""
+    with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+         mock.patch('app.opensense.redis_client.get', return_value=None), \
+         mock.patch('app.opensense.redis_client.setex') as mock_setex, \
+         mock.patch('app.opensense.requests.get', return_value=mock_response(25)):
+        result = opensense.get_temperature()
+        assert 'Average temperature' in result
+        mock_setex.assert_called()

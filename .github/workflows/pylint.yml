@@ -31,6 +31,7 @@ jobs:
           pip install requests
           pip install vcrpy
           pip install prometheus_client
+          pip install redis
       - name: Analysing the code with pylint
         run: |
           # Set PYTHONPATH so pylint can find the app module
