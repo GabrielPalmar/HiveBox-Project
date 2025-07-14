@@ -7,7 +7,7 @@ import redis
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
 REDIS_DB = int(os.environ.get('REDIS_DB', 0))
-CACHE_TTL = int(os.environ.get('CACHE_TTL', 300))  
+CACHE_TTL = int(os.environ.get('CACHE_TTL', 300))
 
 try:
     redis_client = redis.StrictRedis(
@@ -29,7 +29,6 @@ except (redis.ConnectionError, redis.TimeoutError) as e:
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
     cache_key = "temperature_data"
-
     if REDIS_AVAILABLE:
         try:
             cached_data = redis_client.get(cache_key)
@@ -42,10 +41,7 @@ def get_temperature():
     print("Fetching new data from OpenSenseMap API...")
 
     # Ensuring that data is not older than 1 hour.
-    subs_time = datetime.now(timezone.utc) - timedelta(hours=1)
-    time_iso = subs_time.isoformat().replace("+00:00", "Z")
-
-    api_endpoint = "https://api.opensensemap.org/boxes"
+    time_iso = datetime.now(timezone.utc) - timedelta(hours=1).isoformat().replace("+00:00", "Z")
 
     params = {
         "date": time_iso,
@@ -53,7 +49,8 @@ def get_temperature():
     }
 
     print('Getting data from OpenSenseMap API...')
-    response = requests.get(api_endpoint, params=params, timeout=240)
+
+    response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=240)
     print('Data retrieved successfully!')
 
     res = [d.get('sensors') for d in response.json() if 'sensors' in d]
