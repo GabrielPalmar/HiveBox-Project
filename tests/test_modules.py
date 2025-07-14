@@ -65,7 +65,8 @@ def test_opensense_get_temperature_too_hot():
 
 def test_opensense_cache_get():
     """Test that cached data is used if available"""
-    with mock.patch('app.opensense.redis_client.get', return_value="cached_result"), \
+    with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+         mock.patch('app.opensense.redis_client.get', return_value="cached_result"), \
          mock.patch('app.opensense.requests.get') as mock_requests:
         result = opensense.get_temperature()
         assert result == "cached_result"
@@ -73,7 +74,8 @@ def test_opensense_cache_get():
 
 def test_opensense_cache_setex():
     """Test that data is cached after fetching"""
-    with mock.patch('app.opensense.redis_client.get', return_value=None), \
+    with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+         mock.patch('app.opensense.redis_client.get', return_value=None), \
          mock.patch('app.opensense.redis_client.setex') as mock_setex, \
          mock.patch('app.opensense.requests.get', return_value=mock_response(25)):
         result = opensense.get_temperature()
