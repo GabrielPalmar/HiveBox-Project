@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: hivebox
-          image: ghcr.io/gabrielpalmar/hivebox:0.4.0@sha256:31dccc066ffd02ef65850ed8125fc2dadf0bd65958fb49bee0517e40afab2e1c
+          image: ghcr.io/gabrielpalmar/hivebox:0.5.0@sha256:81aa2e46d597ad24c0d25b5f0df9e48d0a0b7503eec060fafdde71be602662a6
           ports:
             - containerPort: 5000
           securityContext:
