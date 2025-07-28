@@ -15,21 +15,28 @@ spec:
         app: hivebox
     spec:
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: hivebox
-          image: ghcr.io/gabrielpalmar/hivebox:0.5.0@sha256:81aa2e46d597ad24c0d25b5f0df9e48d0a0b7503eec060fafdde71be602662a6
+          image: ghcr.io/gabrielpalmar/hivebox:latest@sha256:4e385cbb108b94a13b9faa884ebc1150119fcf6d4963a75450ed13b344a3c9c5
           ports:
             - containerPort: 5000
+          env:
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DB
+              value: "0"
+            - name: CACHE_TTL
+              value: "300"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            runAsGroup: 1000
             runAsUser: 1000
             capabilities:
               drop:
@@ -45,9 +52,9 @@ spec:
             httpGet:
               path: /version
               port: 5000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 60
+            periodSeconds: 120
+            timeoutSeconds: 10
             failureThreshold: 3
           readinessProbe:
             httpGet:
@@ -60,6 +67,31 @@ spec:
           volumeMounts:
             - name: tmp-volume
               mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
         - name: valkey
           image: valkey/valkey:8-alpine3.22@sha256:0d27f0bca0249f61d060029a6aaf2e16b2c417d68d02a508e1dfb763fa2948b4
           ports:
@@ -69,7 +101,8 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
-            runAsUser: 999
+            runAsGroup: 1000
+            runAsUser: 1000
             capabilities:
               drop:
                 - ALL
@@ -84,7 +117,5 @@ spec:
             - name: valkey-data
               mountPath: /data
       volumes:
-        - name: tmp-volume
-          emptyDir: {}
         - name: valkey-data
           emptyDir: {}
