@@ -1,8 +1,12 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
 from datetime import datetime, timezone, timedelta
 import os
+import socket
 import requests
 import redis
+
+HOSTNAME = socket.gethostname()
+IPADDR = socket.gethostbyname(HOSTNAME)
 
 REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
 REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
@@ -50,7 +54,7 @@ def get_temperature():
 
     print('Getting data from OpenSenseMap API...')
 
-    response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=240)
+    response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=300)
     print('Data retrieved successfully!')
 
     res = [d.get('sensors') for d in response.json() if 'sensors' in d]
@@ -82,4 +86,4 @@ def get_temperature():
         except redis.RedisError as e:
             print(f"Redis error while caching data: {e}")
 
-    return result
+    return result + f"From: {IPADDR}\n"

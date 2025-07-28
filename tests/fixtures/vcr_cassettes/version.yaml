@@ -1,34 +1,32 @@
 interactions:
-- request:
-    body: null
-    headers:
-      Accept:
-      - '*/*'
-      Accept-Encoding:
-      - gzip, deflate
-      Connection:
-      - keep-alive
-      User-Agent:
-      - python-requests/2.31.0
-    method: GET
-    uri: http://127.0.0.1:5000/version
-  response:
-    body:
-      string: 'Current app version: 0.4.1
-
-        '
-    headers:
-      Connection:
-      - close
-      Content-Length:
-      - '27'
-      Content-Type:
-      - text/html; charset=utf-8
-      Date:
-      - Wed, 25 Jun 2025 17:19:51 GMT
-      Server:
-      - Werkzeug/3.1.3 Python/3.13.5
-    status:
-      code: 200
-      message: OK
+  - request:
+      body: null
+      headers:
+        Accept:
+          - "*/*"
+        Accept-Encoding:
+          - gzip, deflate
+        Connection:
+          - keep-alive
+        User-Agent:
+          - python-requests/2.31.0
+      method: GET
+      uri: http://127.0.0.1:5000/version
+    response:
+      body:
+        string: "Current app version: 0.5.0"
+      headers:
+        Connection:
+          - close
+        Content-Length:
+          - "27"
+        Content-Type:
+          - text/html; charset=utf-8
+        Date:
+          - Wed, 25 Jun 2025 17:19:51 GMT
+        Server:
+          - Werkzeug/3.1.3 Python/3.13.5
+      status:
+        code: 200
+        message: OK
 version: 1
