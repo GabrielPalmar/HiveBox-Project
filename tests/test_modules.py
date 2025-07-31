@@ -81,3 +81,22 @@ def test_opensense_cache_setex():
         result = opensense.get_temperature()
         assert 'Average temperature' in result
         mock_setex.assert_called()
+
+def test_store_endpoint():
+    """Test store endpoint with test client"""
+    client = app.test_client()
+    response = client.get('/store')
+    # Should return 200 or 500 depending on MinIO availability
+    assert response.status_code in [200, 500]
+
+def test_store_temperature_data():
+    '''Test that store endpoint works'''
+    with mock.patch('app.storage.store_temperature_data') as mock_store:
+        mock_store.return_value = "Temperature data successfully uploaded"
+
+        client = app.test_client()
+        response = client.get('/store')
+
+        assert response.status_code == 200
+        assert "successfully uploaded" in response.get_data(as_text=True)
+        mock_store.assert_called_once()

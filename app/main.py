@@ -3,6 +3,7 @@ import os
 from flask import Flask, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app import opensense
+from app import storage
 
 app = Flask(__name__)
 
@@ -25,6 +26,11 @@ def get_temperature():
 def metrics():
     '''Function to return Prometheus metrics.'''
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+@app.route('/store')
+def store():
+    '''Function to store results in MinIO.'''
+    return storage.store_temperature_data()
 
 if __name__ == "__main__":
     app.run()

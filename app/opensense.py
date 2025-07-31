@@ -22,7 +22,6 @@ try:
         socket_connect_timeout=240,
         socket_timeout=240
         )
-
     redis_client.ping()
     REDIS_AVAILABLE = True
     print("Connected to Redis successfully!")

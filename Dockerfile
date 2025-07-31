@@ -12,9 +12,12 @@ RUN pip install --no-cache-dir -r /app/requirements.txt --require-hashes && \
 
 ENV FLASK_APP=app.main.py:app \
     PYTHONUNBUFFERED=1 \
-    REDIS_HOST=localhost \
     REDIS_PORT=6379 \
-    CACHE_TTL=300
+    REDIS_DB=0 \
+    CACHE_TTL=300 \
+    MINIO_PORT=9000 \
+    MINIO_ACCESS_KEY=minioadmin \
+    MINIO_SECRET_KEY=minioadmin
 
 USER appuser
 

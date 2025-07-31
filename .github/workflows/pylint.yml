@@ -32,6 +32,7 @@ jobs:
           pip install vcrpy
           pip install prometheus_client
           pip install redis
+          pip install minio
       - name: Analysing the code with pylint
         run: |
           # Set PYTHONPATH so pylint can find the app module
