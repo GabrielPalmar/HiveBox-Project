@@ -1,6 +1,7 @@
 '''This module contains tests for the Flask and OpenSense modules.'''
 import re
 import unittest.mock as mock
+from app.storage import store_temperature_data
 from app.main import app
 from app import opensense
 
@@ -100,3 +101,24 @@ def test_store_temperature_data():
         assert response.status_code == 200
         assert "successfully uploaded" in response.get_data(as_text=True)
         mock_store.assert_called_once()
+
+def test_store_temperature_data_integration():
+    '''Test that storage function works with mocked MinIO'''
+    with mock.patch('app.storage.Minio') as mock_minio_class:
+        # Mock MinIO client
+        mock_client = mock.MagicMock()
+        mock_minio_class.return_value = mock_client
+        mock_client.bucket_exists.return_value = True
+        mock_client.put_object.return_value = None
+        mock_client.list_buckets.return_value = []
+
+        # Mock temperature data
+        with mock.patch('app.opensense.get_temperature') as mock_temp:
+            mock_temp.return_value = "Average temperature: 22.5 °C (Good)\nFrom: test\n"
+
+            # Import and call the actual function
+            result = store_temperature_data()
+
+            # Test the result
+            assert "successfully uploaded" in result
+            mock_client.put_object.assert_called_once()

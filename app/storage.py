@@ -23,7 +23,7 @@ def store_temperature_data():
         # Check if the MinIO server is reachable
         try:
             client.list_buckets()
-        except Exception as conn_exc:
+        except ConnectionError as conn_exc:
             error_msg = f"Cannot connect to MinIO server: {conn_exc}"
             print(error_msg)
             return error_msg
@@ -59,10 +59,6 @@ def store_temperature_data():
 
     except (S3Error, InvalidResponseError) as exc:
         error_msg = f"MinIO S3 error occurred: {exc}"
-        print(error_msg)
-        return error_msg
-    except Exception as exc:
-        error_msg = f"Unexpected error occurred: {exc}"
         print(error_msg)
         return error_msg
 
