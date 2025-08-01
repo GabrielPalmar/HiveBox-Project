@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: temperature-storage-cronjob
+  labels:
+    app: hivebox-cronjob
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534 # nobody user
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: temperature-storage
+              image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+              command: ["curl"]
+              args:
+                - "-f" # Fail on HTTP errors
+                - "-s" # Silent mode
+                - "-S" # Show errors
+                - "--max-time"
+                - "60"
+                - "http://hivebox-service/store"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                limits:
+                  memory: "32Mi"
+                  cpu: "50m"
+                requests:
+                  memory: "16Mi"
+                  cpu: "10m"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
