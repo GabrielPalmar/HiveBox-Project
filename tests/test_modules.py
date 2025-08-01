@@ -1,6 +1,7 @@
 '''This module contains tests for the Flask and OpenSense modules.'''
 import re
 import unittest.mock as mock
+from minio.error import S3Error, InvalidResponseError
 from app.storage import store_temperature_data
 from app.main import app
 from app import opensense
@@ -122,3 +123,74 @@ def test_store_temperature_data_integration():
             # Test the result
             assert "successfully uploaded" in result
             mock_client.put_object.assert_called_once()
+
+def test_store_temperature_data_bucket_creation():
+    '''Test bucket creation when bucket doesn't exist'''
+    with mock.patch('app.storage.Minio') as mock_minio_class:
+        mock_client = mock.MagicMock()
+        mock_minio_class.return_value = mock_client
+
+        # Mock bucket doesn't exist initially
+        mock_client.bucket_exists.return_value = False
+        mock_client.make_bucket.return_value = None
+        mock_client.put_object.return_value = None
+        mock_client.list_buckets.return_value = []
+
+        with mock.patch('app.opensense.get_temperature') as mock_temp:
+            mock_temp.return_value = "Average temperature: 22.5 °C (Good)\nFrom: test\n"
+
+            result = store_temperature_data()
+
+            # Verify bucket creation was called
+            mock_client.bucket_exists.assert_called_once_with("temperature-data")
+            mock_client.make_bucket.assert_called_once_with("temperature-data")
+            mock_client.put_object.assert_called_once()
+
+            assert "successfully uploaded" in result
+            assert "temperature-data" in result
+
+def test_store_temperature_data_s3_error():
+    '''Test S3Error exception handling'''
+    with mock.patch('app.storage.Minio') as mock_minio_class:
+        mock_client = mock.MagicMock()
+        mock_minio_class.return_value = mock_client
+
+        # Mock S3Error during bucket check
+        mock_client.list_buckets.return_value = []
+        mock_client.bucket_exists.side_effect = S3Error(
+            code="AccessDenied",
+            message="Access denied",
+            resource="/temperature-data",
+            request_id="test-request-id",
+            host_id="test-host-id",
+            response=None
+        )
+
+        result = store_temperature_data()
+
+        assert "MinIO S3 error occurred" in result
+        assert "Access denied" in result
+
+
+def test_store_temperature_data_invalid_response_error():
+    '''Test InvalidResponseError exception handling'''
+    with mock.patch('app.storage.Minio') as mock_minio_class:
+        mock_client = mock.MagicMock()
+        mock_minio_class.return_value = mock_client
+
+        # Mock InvalidResponseError during put_object
+        mock_client.list_buckets.return_value = []
+        mock_client.bucket_exists.return_value = True
+        mock_client.put_object.side_effect = InvalidResponseError(
+            "Invalid response", 
+            content_type="application/json", 
+            body=b"{}"
+        )
+
+        with mock.patch('app.opensense.get_temperature') as mock_temp:
+            mock_temp.return_value = "Test temperature data"
+
+            result = store_temperature_data()
+
+            assert "MinIO S3 error occurred" in result
+            assert "Invalid response" in result
