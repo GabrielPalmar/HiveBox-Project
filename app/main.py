@@ -1,11 +1,15 @@
 '''Module containing the main function of the app.'''
 import os
+import socket
 from flask import Flask, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app import opensense
 from app import storage
 
 app = Flask(__name__)
+
+HOSTNAME = socket.gethostname()
+IPADDR = socket.gethostbyname(HOSTNAME)
 
 @app.route('/version')
 def print_version():
@@ -20,7 +24,7 @@ def print_version():
 @app.route('/temperature')
 def get_temperature():
     '''Function to get the current temperature.'''
-    return opensense.get_temperature()
+    return opensense.get_temperature() + f"From: {IPADDR}\n"
 
 @app.route('/metrics')
 def metrics():
