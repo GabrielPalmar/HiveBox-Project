@@ -183,7 +183,7 @@ def test_store_temperature_data_invalid_response_error():
         mock_client.bucket_exists.return_value = True
         mock_client.put_object.side_effect = InvalidResponseError(
             "Invalid response", 
-            content_type="application/json", 
+            content_type="application/json",
             body=b"{}"
         )
 
