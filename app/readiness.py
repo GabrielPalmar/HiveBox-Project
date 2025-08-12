@@ -1,45 +1,27 @@
 '''Module to check the readiness of the stored information'''
-import os
-from opensense import get_temperature
-import redis
+from app.opensense import get_temperature
+from app.config import create_redis_client
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
-REDIS_DB = int(os.environ.get('REDIS_DB', 0))
-
-try:
-    redis_client = redis.StrictRedis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        db=REDIS_DB,
-        decode_responses=True,
-        socket_connect_timeout=240,
-        socket_timeout=240
-        )
-    redis_client.ping()
-    REDIS_AVAILABLE = True
-    print("Connected to Redis successfully!")
-except (redis.ConnectionError, redis.TimeoutError) as e:
-    REDIS_AVAILABLE = False
-    print("Could not connect to Redis.")
+# Use shared Redis client
+redis_client, REDIS_AVAILABLE = create_redis_client()
 
 def check_caching():
     '''Check if caching content is older than 5 minutes'''
     if not REDIS_AVAILABLE:
-        return False
+        return True  # No Redis = cache is old
 
     # Get the TTL (time to live) of the cached temperature data
     cache_key = "temperature_data"
     ttl = redis_client.ttl(cache_key)
 
     if ttl == -2:  # Key doesn't exist (expired)
-        return True
+        return True  # Cache is old
     elif ttl == -1:  # Key exists but has no expiry
-        return True
-    elif ttl <= (5 * 60) and ttl > 0:  # Cache exists and has time remaining (valid)
-        return False
+        return True  # Cache is old
+    elif ttl > 0:  # Cache exists and has time remaining
+        return False  # Cache is fresh
 
-    return True
+    return True  # Default: cache is old
 
 def reachable_boxes():
     '''Check if 50% + 1 of boxes are reachable'''
@@ -54,12 +36,12 @@ def reachable_boxes():
 def readiness_check():
     '''Combined readiness check for the /readyz endpoint'''
     boxes_status = reachable_boxes()
-    cache_valid = check_caching()
+    cache_is_old = check_caching()  # Rename: True = old, False = fresh
 
     # Return 503 if BOTH conditions are met:
     # 1. More than 50% of boxes are unreachable AND
     # 2. Cache is older than 5 minutes
-    if boxes_status == 400 and cache_valid:
+    if boxes_status == 400 and cache_is_old:  # Now it reads correctly
         return 503
 
     return 200

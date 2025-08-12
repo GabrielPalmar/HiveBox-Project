@@ -1,32 +1,30 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
 from datetime import datetime, timezone, timedelta
 import re
-import os
 import requests
 import redis
+from app.config import create_redis_client, CACHE_TTL
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
-REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
-REDIS_DB = int(os.environ.get('REDIS_DB', 0))
-CACHE_TTL = int(os.environ.get('CACHE_TTL', 300))
-
-try:
-    redis_client = redis.StrictRedis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        db=REDIS_DB,
-        decode_responses=True,
-        socket_connect_timeout=240,
-        socket_timeout=240
-        )
-    redis_client.ping()
-    REDIS_AVAILABLE = True
-    print("Connected to Redis successfully!")
-except (redis.ConnectionError, redis.TimeoutError) as e:
-    REDIS_AVAILABLE = False
-    print("Could not connect to Redis.")
+# Use shared Redis client
+redis_client, REDIS_AVAILABLE = create_redis_client()
 
 _sensor_stats = {"total_sensors": 0, "null_count": 0}
+
+def classify_temperature(average):
+    '''Classify temperature based on ranges using dictionary approach'''
+    # Define temperature ranges and their classifications
+    temp_classifications = {
+        "cold": (float('-inf'), 10, "Warning: Too cold"),
+        "good": (10, 36, "Good"), 
+        "hot": (36, float('inf'), "Warning: Too hot")
+    }
+
+    # Find the appropriate classification
+    for _, (min_temp, max_temp, status) in temp_classifications.items():
+        if min_temp < average <= max_temp:
+            return status
+
+    return "Unknown"  # Default case
 
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
@@ -77,12 +75,9 @@ def get_temperature():
     total_sum = sum(temp_list)
     average = total_sum / len(temp_list) if temp_list else 0
 
-    if average <= 10:
-        result = f'Average temperature: {average:.2f} °C (Warning: Too cold)\n'
-    elif 10 < average <= 36:
-        result = f'Average temperature: {average:.2f} °C (Good)\n'
-    else:
-        result = f'Average temperature: {average:.2f} °C (Warning: Too hot)\n'
+    # Use the dictionary-based classification
+    status = classify_temperature(average)
+    result = f'Average temperature: {average:.2f} °C ({status})\n'
 
     if REDIS_AVAILABLE:
         try:

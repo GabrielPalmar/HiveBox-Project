@@ -44,11 +44,11 @@ def readyz():
 
     if status_code == 200:
         return {"status": "ready"}, 200
-    else:
-        return {
-            "status": "not ready", 
-            "error": "More than 50% of sensors unreachable and cache expired"
-        }, 503
+
+    return {
+        "status": "not ready", 
+        "error": "More than 50% of sensors unreachable and cache expired"
+    }, 503
 
 if __name__ == "__main__":
     app.run()
