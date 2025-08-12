@@ -25,7 +25,8 @@ def print_version():
 @app.route('/temperature')
 def get_temperature():
     '''Function to get the current temperature.'''
-    return opensense.get_temperature() + f"From: {IPADDR}\n"
+    result, _ = opensense.get_temperature()
+    return result + f"From: {IPADDR}\n"
 
 @app.route('/metrics')
 def metrics():

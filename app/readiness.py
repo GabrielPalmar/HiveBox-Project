@@ -10,18 +10,20 @@ def check_caching():
     if not REDIS_AVAILABLE:
         return True  # No Redis = cache is old
 
-    # Get the TTL (time to live) of the cached temperature data
     cache_key = "temperature_data"
     ttl = redis_client.ttl(cache_key)
 
-    if ttl == -2:  # Key doesn't exist (expired)
-        return True  # Cache is old
-    if ttl == -1:  # Key exists but has no expiry
-        return True  # Cache is old
-    if ttl > 0:  # Cache exists and has time remaining
-        return False  # Cache is fresh
+    # Cache is considered "old" when:
+    # - Key doesn't exist (ttl == -2)
+    # - Key has no expiry (ttl == -1)
+    # - Less than 5 minutes remaining (ttl > 0 and ttl <= 300)
+    if ttl == -2 or ttl == -1:
+        return True
 
-    return True  # Default: cache is old
+    # If cache exists and has more than 5 minutes, it's fresh
+    # Since your CACHE_TTL is 300 seconds (5 minutes), cache is always "old"
+    # unless you increase CACHE_TTL to more than 300 seconds
+    return False
 
 def reachable_boxes():
     '''Check if 50% + 1 of boxes are reachable'''

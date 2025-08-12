@@ -45,7 +45,7 @@ def mock_response(temp_value):
         """Mock response class to simulate OpenSenseMap API response."""
         def __init__(self):
             self.text = "mock response text"  # Add this line
-            
+
         def json(self):
             """Return a mock JSON response."""
             return [{
@@ -73,8 +73,12 @@ def test_opensense_get_temperature_too_hot():
 
 def test_opensense_cache_get():
     """Test that cached data is used if available"""
+    # Create a mock redis client
+    mock_redis_client = mock.MagicMock()
+    mock_redis_client.get.return_value = "cached_result"
+
     with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
-         mock.patch('app.opensense.redis_client.get', return_value="cached_result"), \
+         mock.patch('app.opensense.redis_client', mock_redis_client), \
          mock.patch('app.opensense.requests.get') as mock_requests:
         result, _ = opensense.get_temperature()  # Unpack tuple
         assert result == "cached_result"
@@ -82,13 +86,16 @@ def test_opensense_cache_get():
 
 def test_opensense_cache_setex():
     """Test that data is cached after fetching"""
+    # Create a mock redis client
+    mock_redis_client = mock.MagicMock()
+    mock_redis_client.get.return_value = None
+
     with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
-         mock.patch('app.opensense.redis_client.get', return_value=None), \
-         mock.patch('app.opensense.redis_client.setex') as mock_setex, \
+         mock.patch('app.opensense.redis_client', mock_redis_client), \
          mock.patch('app.opensense.requests.get', return_value=mock_response(25)):
         result, _ = opensense.get_temperature()  # Unpack tuple
         assert 'Average temperature' in result
-        mock_setex.assert_called()
+        mock_redis_client.setex.assert_called()
 
 def test_store_endpoint():
     """Test store endpoint with test client"""
@@ -120,8 +127,13 @@ def test_store_temperature_data_integration():
         mock_client.list_buckets.return_value = []
 
         # Mock temperature data - return tuple
-        with mock.patch('app.opensense.get_temperature') as mock_temp:
-            mock_temp.return_value = ("Average temperature: 22.5 °C (Good)\nFrom: test\n", {"total_sensors": 0, "null_count": 0})
+        with mock.patch('app.storage.opensense.get_temperature') as mock_temp:
+            mock_temp.return_value = (
+                "Average temperature: 22.5 °C (Good)\nFrom: test\n",
+                {
+                    "total_sensors": 0, 
+                    "null_count": 0
+                })
 
             # Import and call the actual function
             result = store_temperature_data()
@@ -142,8 +154,13 @@ def test_store_temperature_data_bucket_creation():
         mock_client.put_object.return_value = None
         mock_client.list_buckets.return_value = []
 
-        with mock.patch('app.opensense.get_temperature') as mock_temp:
-            mock_temp.return_value = ("Average temperature: 22.5 °C (Good)\nFrom: test\n", {"total_sensors": 0, "null_count": 0})
+        with mock.patch('app.storage.opensense.get_temperature') as mock_temp:
+            mock_temp.return_value = (
+                "Average temperature: 22.5 °C (Good)\nFrom: test\n",
+                {
+                    "total_sensors": 0,
+                    "null_count": 0
+                })
 
             result = store_temperature_data()
 
@@ -171,10 +188,16 @@ def test_store_temperature_data_s3_error():
             host_id="test-host-id",
             response=None
         )
-        
+
         # Mock get_temperature to return tuple
-        with mock.patch('app.opensense.get_temperature') as mock_temp:
-            mock_temp.return_value = ("Test temperature data", {"total_sensors": 0, "null_count": 0})
+        with mock.patch('app.storage.opensense.get_temperature') as mock_temp:
+            mock_temp.return_value = (
+                "Test temperature data",
+                {
+                    "total_sensors": 0,
+                    "null_count": 0
+                }
+            )
 
             result = store_temperature_data()
 
@@ -196,8 +219,14 @@ def test_store_temperature_data_invalid_response_error():
             body=b"{}"
         )
 
-        with mock.patch('app.opensense.get_temperature') as mock_temp:
-            mock_temp.return_value = ("Test temperature data", {"total_sensors": 0, "null_count": 0})
+        with mock.patch('app.storage.opensense.get_temperature') as mock_temp:
+            mock_temp.return_value = (
+                "Test temperature data",
+                {
+                    "total_sensors": 0,
+                    "null_count": 0
+                }
+            )
 
             result = store_temperature_data()
 
@@ -239,3 +268,22 @@ def test_readiness_check_unreachable():
         result = readiness.readiness_check()
 
         assert result == 503
+
+def test_readyz_endpoint():
+    '''Test /readyz endpoint'''
+    client = app.test_client()
+
+    # Test when service is ready
+    with mock.patch('app.readiness.readiness_check', return_value=200):
+        response = client.get('/readyz')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['status'] == 'ready'
+
+    # Test when service is not ready
+    with mock.patch('app.readiness.readiness_check', return_value=503):
+        response = client.get('/readyz')
+        assert response.status_code == 503
+        data = response.get_json()
+        assert data['status'] == 'not ready'
+        assert 'error' in data
