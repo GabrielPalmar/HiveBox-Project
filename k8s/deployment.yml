@@ -54,11 +54,11 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /version
+              path: /readyz
               port: 5000
-            initialDelaySeconds: 60
-            periodSeconds: 120
-            timeoutSeconds: 10
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
           volumeMounts:
             - name: tmp-volume

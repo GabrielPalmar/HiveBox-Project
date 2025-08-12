@@ -14,7 +14,7 @@ interactions:
       uri: http://127.0.0.1:5000/version
     response:
       body:
-        string: "Current app version: 0.5.0"
+        string: "Current app version: 0.7.0"
       headers:
         Connection:
           - close
