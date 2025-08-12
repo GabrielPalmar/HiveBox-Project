@@ -1,5 +1,6 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
 from datetime import datetime, timezone, timedelta
+import re
 import os
 import requests
 import redis
@@ -24,6 +25,8 @@ try:
 except (redis.ConnectionError, redis.TimeoutError) as e:
     REDIS_AVAILABLE = False
     print("Could not connect to Redis.")
+
+_sensor_stats = {"total_sensors": 0, "null_count": 0}
 
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
@@ -52,17 +55,24 @@ def get_temperature():
     response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=300)
     print('Data retrieved successfully!')
 
+    _sensor_stats["total_sensors"] = sum(
+        1 for line in response.text.splitlines() if re.search(r'^\s*"sensors"\s*:\s*\[', line)
+    )
+
     res = [d.get('sensors') for d in response.json() if 'sensors' in d]
 
     temp_list = []
+    _sensor_stats["null_count"] = 0  # Initialize counter for null measurements
 
     for sensor_list in res:
         for measure in sensor_list:
-            if measure.get('title') == "Temperatur" and 'lastMeasurement' in measure:
+            if measure.get('unit') == "\u00b0C" and 'lastMeasurement' in measure:
                 last_measurement = measure['lastMeasurement']
                 if last_measurement is not None and 'value' in last_measurement:
                     last_measurement_int = float(last_measurement['value'])
                     temp_list.append(last_measurement_int)
+                else:
+                    _sensor_stats["null_count"] += 1
 
     total_sum = sum(temp_list)
     average = total_sum / len(temp_list) if temp_list else 0
@@ -81,4 +91,4 @@ def get_temperature():
         except redis.RedisError as e:
             print(f"Redis error while caching data: {e}")
 
-    return result
+    return result, _sensor_stats

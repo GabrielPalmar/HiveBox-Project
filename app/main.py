@@ -5,6 +5,7 @@ from flask import Flask, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app import opensense
 from app import storage
+from app import readiness
 
 app = Flask(__name__)
 
@@ -35,6 +36,19 @@ def metrics():
 def store():
     '''Function to store results in MinIO.'''
     return storage.store_temperature_data()
+
+@app.route('/readyz')
+def readyz():
+    '''Readiness probe endpoint'''
+    status_code = readiness.readiness_check()
+
+    if status_code == 200:
+        return {"status": "ready"}, 200
+    else:
+        return {
+            "status": "not ready", 
+            "error": "More than 50% of sensors unreachable and cache expired"
+        }, 503
 
 if __name__ == "__main__":
     app.run()

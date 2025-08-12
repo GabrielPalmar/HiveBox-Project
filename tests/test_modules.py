@@ -5,6 +5,7 @@ from minio.error import S3Error, InvalidResponseError
 from app.storage import store_temperature_data
 from app.main import app
 from app import opensense
+from app import readiness
 
 def test_app_exists():
     """Test that the Flask app exists"""
@@ -194,3 +195,39 @@ def test_store_temperature_data_invalid_response_error():
 
             assert "MinIO S3 error occurred" in result
             assert "Invalid response" in result
+
+def test_readiness_reachability():
+    '''Test readiness endpoint reachability'''
+    with mock.patch('app.readiness.check_readiness') as mock_check:
+        mock_check.return_value = True
+
+        result = readiness.reachable_boxes()
+
+        assert result is True
+
+def test_readiness_unreachability():
+    '''Test readiness endpoint unreachability'''
+    with mock.patch('app.readiness.check_readiness') as mock_check:
+        mock_check.return_value = False
+
+        result = readiness.reachable_boxes()
+
+        assert result is False
+
+def test_readiness_check():
+    '''Test readiness endpoint check'''
+    with mock.patch('app.readiness.check_readiness') as mock_check:
+        mock_check.return_value = True
+
+        result = readiness.readiness_check()
+
+        assert result is 200
+
+def test_readiness_check_unreachable():
+    '''Test readiness endpoint unreachability'''
+    with mock.patch('app.readiness.check_readiness') as mock_check:
+        mock_check.return_value = False
+
+        result = readiness.readiness_check()
+
+        assert result is 503
