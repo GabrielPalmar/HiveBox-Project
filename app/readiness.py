@@ -16,9 +16,9 @@ def check_caching():
 
     if ttl == -2:  # Key doesn't exist (expired)
         return True  # Cache is old
-    elif ttl == -1:  # Key exists but has no expiry
+    if ttl == -1:  # Key exists but has no expiry
         return True  # Cache is old
-    elif ttl > 0:  # Cache exists and has time remaining
+    if ttl > 0:  # Cache exists and has time remaining
         return False  # Cache is fresh
 
     return True  # Default: cache is old

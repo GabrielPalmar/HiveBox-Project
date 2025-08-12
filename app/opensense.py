@@ -28,13 +28,14 @@ def classify_temperature(average):
 
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
-    cache_key = "temperature_data"
     if REDIS_AVAILABLE:
         try:
-            cached_data = redis_client.get(cache_key)
+            cached_data = redis_client.get("temperature_data")
             if cached_data:
                 print("Using cached data from Redis.")
-                return cached_data
+                # Return cached data with default stats (since we don't have fresh stats)
+                default_stats = {"total_sensors": 0, "null_count": 0}
+                return cached_data, default_stats
         except redis.RedisError as e:
             print(f"Redis error: {e}. Proceeding without cache.")
 
@@ -81,7 +82,7 @@ def get_temperature():
 
     if REDIS_AVAILABLE:
         try:
-            redis_client.setex(cache_key, CACHE_TTL, result)
+            redis_client.setex("temperature_data", CACHE_TTL, result)
             print("Data cached in Redis.")
         except redis.RedisError as e:
             print(f"Redis error while caching data: {e}")
