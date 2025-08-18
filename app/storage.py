@@ -31,10 +31,10 @@ def store_temperature_data():
         bucket_name = "temperature-data"
         destination_file = f"temperature_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S%f')}.txt"
 
-        # Get the original temperature data format
-        temperature_data = opensense.get_temperature()
+        # Get the temperature data - unpack the tuple
+        temperature_result, _ = opensense.get_temperature()
 
-        text_bytes = temperature_data.encode('utf-8')
+        text_bytes = temperature_result.encode('utf-8')
         text_stream = io.BytesIO(text_bytes)
 
         # Make the bucket if it doesn't exist.
@@ -63,5 +63,5 @@ def store_temperature_data():
         return error_msg
 
 if __name__ == "__main__":
-    result = store_temperature_data()
-    print(result)
+    RESULT = store_temperature_data()
+    print(RESULT)
