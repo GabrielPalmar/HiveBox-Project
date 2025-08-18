@@ -73,8 +73,7 @@ def get_temperature():
                 else:
                     _sensor_stats["null_count"] += 1
 
-    total_sum = sum(temp_list)
-    average = total_sum / len(temp_list) if temp_list else 0
+    average = sum(temp_list) / len(temp_list) if temp_list else 0
 
     # Use the dictionary-based classification
     status = classify_temperature(average)

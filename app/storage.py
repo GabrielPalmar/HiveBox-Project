@@ -32,9 +32,9 @@ def store_temperature_data():
         destination_file = f"temperature_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S%f')}.txt"
 
         # Get the temperature data - unpack the tuple
-        temperature_result, _ = opensense.get_temperature() 
+        temperature_result, _ = opensense.get_temperature()
 
-        text_bytes = temperature_result.encode('utf-8')  
+        text_bytes = temperature_result.encode('utf-8')
         text_stream = io.BytesIO(text_bytes)
 
         # Make the bucket if it doesn't exist.
