@@ -245,8 +245,7 @@ class TestStorage(unittest.TestCase):
         with mock.patch('app.storage.Minio') as mock_minio_class:
             mock_client = mock.MagicMock()
             mock_minio_class.return_value = mock_client
-            mock_client.list_buckets.side_effect = OSError("Network unreachable")
-
+            mock_client.list_buckets.side_effect = ConnectionError("Network unreachable")
             with mock.patch('app.storage.opensense.get_temperature',
                            return_value=self.mock_temp_data):
                 result = store_temperature_data()
