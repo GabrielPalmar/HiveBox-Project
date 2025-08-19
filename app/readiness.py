@@ -37,8 +37,8 @@ def reachable_boxes():
 
         if percentage > 50:
             return 200
-        else:
-            return 400
+        return 400
+
     except requests.exceptions.RequestException as e:
         # Handle network-related errors from the API call
         print(f"Network error checking reachable boxes: {e}")
