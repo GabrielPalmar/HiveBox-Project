@@ -2,6 +2,8 @@
 import re
 import unittest
 import unittest.mock as mock
+import requests  # added
+import redis     # added
 from minio.error import S3Error, InvalidResponseError
 from app.storage import store_temperature_data
 from app.main import app
@@ -297,6 +299,17 @@ class TestReadiness(unittest.TestCase):
             result = readiness.check_caching()
             self.assertFalse(result)  # Cache is fresh
 
+    def test_check_caching_redis_error(self):
+        """TTL raises RedisError -> treated as old cache (True)"""
+        mock_redis_client = mock.MagicMock()
+        mock_redis_client.ttl.side_effect = redis.RedisError("boom")
+
+        with mock.patch('app.readiness.REDIS_AVAILABLE', True), \
+             mock.patch('app.readiness.redis_client', mock_redis_client), \
+             mock.patch('builtins.print'):
+            result = readiness.check_caching()
+            self.assertTrue(result)
+
     def test_reachable_boxes_healthy(self):
         """Test reachable_boxes when most sensors are working"""
         mock_stats = {"total_sensors": 100, "null_count": 10}
@@ -327,6 +340,36 @@ class TestReadiness(unittest.TestCase):
         with mock.patch('app.readiness.get_temperature',
                        return_value=("temp", {"total_sensors": 100, "null_count": 50})):
             self.assertEqual(readiness.reachable_boxes(), 200)
+
+    def test_reachable_boxes_network_error(self):
+        """requests exceptions -> treated as healthy (200)"""
+        with mock.patch('app.readiness.get_temperature',
+                        side_effect=requests.exceptions.RequestException("net")), \
+             mock.patch('builtins.print'):
+            self.assertEqual(readiness.reachable_boxes(), 200)
+
+    def test_reachable_boxes_redis_error(self):
+        """Redis errors inside get_temperature -> treated as healthy (200)"""
+        with mock.patch('app.readiness.get_temperature',
+                        side_effect=redis.RedisError("redis down")), \
+             mock.patch('builtins.print'):
+            self.assertEqual(readiness.reachable_boxes(), 200)
+
+    def test_reachable_boxes_data_error(self):
+        """Data parsing error -> returns 400"""
+        # Cause a TypeError during percentage calculation
+        bad_stats = {"total_sensors": 2, "null_count": "x"}
+        with mock.patch('app.readiness.get_temperature',
+                        return_value=("temp", bad_stats)), \
+             mock.patch('builtins.print'):
+            self.assertEqual(readiness.reachable_boxes(), 400)
+
+    def test_readiness_check_redis_error_top_level(self):
+        """Top-level Redis error in readiness_check -> returns 200"""
+        with mock.patch('app.readiness.check_caching',
+                        side_effect=redis.RedisError("ttl failed")), \
+             mock.patch('builtins.print'):
+            self.assertEqual(readiness.readiness_check(), 200)
 
     def test_readiness_check_all_good(self):
         """Test readiness_check when everything is healthy"""
