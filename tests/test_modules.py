@@ -32,8 +32,10 @@ class TestFlaskApp(unittest.TestCase):
 
     def test_temperature_endpoint(self):
         """Test temperature endpoint returns 200 or 500"""
-        response = self.client.get('/temperature')
-        self.assertIn(response.status_code, [200, 500])
+        with mock.patch('app.opensense.requests.get',
+                        return_value=MockOpenSenseResponse(20)):
+            response = self.client.get('/temperature')
+            self.assertIn(response.status_code, [200, 500])
 
     def test_metrics_endpoint(self):
         """Test metrics endpoint returns 200"""
@@ -94,7 +96,9 @@ class TestOpenSense(unittest.TestCase):
 
     def test_get_temperature_returns_tuple(self):
         """Test that opensense.get_temperature returns a tuple with correct format"""
-        result, stats = opensense.get_temperature()
+        with mock.patch('app.opensense.requests.get',
+                        return_value=MockOpenSenseResponse(20)):
+            result, stats = opensense.get_temperature()
         self.assertIsInstance(result, str)
         self.assertIsInstance(stats, dict)
         self.assertIn('total_sensors', stats)

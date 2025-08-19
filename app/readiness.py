@@ -27,17 +27,19 @@ def reachable_boxes():
     '''Check if more than 50% of sensor boxes are reachable'''
     try:
         _, sensor_stats = get_temperature()
-        total_boxes = sensor_stats.get('total', 0)
-        reachable = sensor_stats.get('reachable', 0)
+        total_boxes = sensor_stats.get('total_sensors', 0)
+        unreachable = sensor_stats.get('null_count', 0)
 
+        # No sensors configured => treat as healthy
         if total_boxes == 0:
-            return 400
-
-        percentage = (reachable / total_boxes) * 100
-
-        if percentage > 50:
             return 200
-        return 400
+
+        percentage_unreachable = (unreachable / total_boxes) * 100
+
+        # Fail only if strictly more than 50% are unreachable
+        if percentage_unreachable > 50:
+            return 400
+        return 200
 
     except requests.exceptions.RequestException as e:
         # Handle network-related errors from the API call
