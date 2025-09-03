@@ -1,0 +1,75 @@
+# Global, reused everywhere
+podSecurityContext:
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsGroup: 1000
+  runAsUser: 1000
+  capabilities:
+    drop: ["ALL"]
+
+images:
+  hivebox: ghcr.io/gabrielpalmar/hivebox:latest@sha256:c731999c3fd9b757e2fd816e3c9dcf645dba56647d8a921cb567ece3cf378dc3
+  redis: valkey/valkey:8-alpine3.22@sha256:0d27f0bca0249f61d060029a6aaf2e16b2c417d68d02a508e1dfb763fa2948b4
+  minio: minio/minio:RELEASE.2025-07-23T15-54-02Z@sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0
+  cronjob: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+
+replicas:
+  hivebox: 2
+  redis: 1
+  minio: 1
+
+resources:
+  hivebox:
+    limits: { memory: "512Mi", cpu: "500m" }
+    requests: { memory: "256Mi", cpu: "250m" }
+  redis:
+    limits: { memory: "256Mi", cpu: "250m" }
+    requests: { memory: "128Mi", cpu: "100m" }
+  minio:
+    limits: { memory: "256Mi", cpu: "250m" }
+    requests: { memory: "128Mi", cpu: "100m" }
+  cronjob:
+    limits: { memory: "32Mi", cpu: "50m" }
+    requests: { memory: "16Mi", cpu: "10m" }
+
+services:
+  redis: redis-service
+  minio: minio-service
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+minio:
+  accessKey: minioadmin
+  secretKey: minioadmin
+
+ingressNginx:
+  enabled: true
+  controller:
+    publishService:
+      enabled: true
+    service:
+      type: NodePort
+      nodePorts:
+        http: 30080
+        https: 30443
+
+ingress:
+  enabled: true
+  host: hivebox.local
+  path: /
+  className: nginx
+  serviceName: hivebox-service
+  servicePort: 80
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"

@@ -1,4 +1,5 @@
 '''Module to check the readiness of the stored information'''
+import json
 import requests
 import redis
 from app.opensense import get_temperature
@@ -41,16 +42,16 @@ def reachable_boxes():
             return 400
         return 200
 
+    except json.JSONDecodeError as e:
+        print(f"Data error (JSON) checking reachable boxes: {e}")
+        return 200
     except requests.exceptions.RequestException as e:
-        # Handle network-related errors from the API call
         print(f"Network error checking reachable boxes: {e}")
         return 200
     except redis.RedisError as e:
-        # Handle Redis-related errors
         print(f"Redis error checking reachable boxes: {e}")
         return 200
     except (ValueError, TypeError, KeyError) as e:
-        # Handle data parsing errors
         print(f"Data error checking reachable boxes: {e}")
         return 400
 
