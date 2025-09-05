@@ -51,17 +51,6 @@ minio:
   accessKey: minioadmin
   secretKey: minioadmin
 
-ingressNginx:
-  enabled: true
-  controller:
-    publishService:
-      enabled: true
-    service:
-      type: NodePort
-      nodePorts:
-        http: 30080
-        https: 30443
-
 ingress:
   enabled: true
   host: hivebox.local

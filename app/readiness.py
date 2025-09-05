@@ -42,14 +42,8 @@ def reachable_boxes():
             return 400
         return 200
 
-    except json.JSONDecodeError as e:
-        print(f"Data error (JSON) checking reachable boxes: {e}")
-        return 200
-    except requests.exceptions.RequestException as e:
-        print(f"Network error checking reachable boxes: {e}")
-        return 200
-    except redis.RedisError as e:
-        print(f"Redis error checking reachable boxes: {e}")
+    except (json.JSONDecodeError, requests.exceptions.RequestException, redis.RedisError) as e:
+        print(f"Error checking reachable boxes: {e}")
         return 200
     except (ValueError, TypeError, KeyError) as e:
         print(f"Data error checking reachable boxes: {e}")
