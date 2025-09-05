@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: temperature-storage-cronjob
+  labels:
+    app: hivebox-cronjob
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            {{- include "common.podSecurityContext" . | nindent 12 }}
+          containers:
+            - name: temperature-storage
+              image: {{ .Values.images.cronjob }}
+              command: ["curl"]
+              args:
+                - "-f"
+                - "-s"
+                - "-S"
+                - "--max-time"
+                - "60"
+                - "http://hivebox-service/store"
+              securityContext:
+                {{- include "common.containerSecurityContext" . | nindent 16 }}
+              resources:
+                {{- include "common.resources" (dict "Values" .Values "name" "cronjob") | nindent 16 }}
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
