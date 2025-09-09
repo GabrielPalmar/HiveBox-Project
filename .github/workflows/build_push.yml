@@ -12,7 +12,7 @@ permissions:
 jobs:
     docker_build_test:
         runs-on: ubuntu-24.04
-        name: Docker_build
+        name: Docker_build and Helm_build
         steps:
         - uses: actions/checkout@v4
 
@@ -26,3 +26,48 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker push ghcr.io/gabrielpalmar/hivebox:$(cat version.txt)
             docker push ghcr.io/gabrielpalmar/hivebox:latest
+
+            # Get the SHA256 digest
+            DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/gabrielpalmar/hivebox:$(cat version.txt) | cut -d'@' -f2)
+            if [ -z "$DIGEST" ]; then
+              echo "Failed to capture Docker digest"
+              exit 1
+            fi
+            echo "Image digest: $DIGEST"
+            echo "DOCKER_DIGEST=$DIGEST" >> $GITHUB_ENV
+
+        - name: Install Helm
+          run: |
+            curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+            chmod 700 get_helm.sh
+            ./get_helm.sh
+            if ! command -v helm version &> /dev/null; then
+              echo "Helm could not be installed"
+              exit 1
+            fi
+
+        - name: Build Helm Chart
+          run: |
+            VERSION=$(cat version.txt)
+            sed -i "s/^version:.*/version: $VERSION/" ./helm-chart/Chart.yaml
+            sed -i "s/^appVersion:.*/appVersion: \"$VERSION\"/" ./helm-chart/Chart.yaml
+            sed -i "s|hivebox: ghcr.io/gabrielpalmar/hivebox:.*|hivebox: ghcr.io/gabrielpalmar/hivebox:$VERSION@$DOCKER_DIGEST|" ./helm-chart/values.yaml
+            helm package ./helm-chart
+        
+        - name: Push Helm Chart to GHCR
+          run: |
+            CHART_FILE="hivebox-$(cat version.txt).tgz"
+            if [ ! -f "$CHART_FILE" ]; then
+              echo "Helm chart $CHART_FILE not found"
+              exit 1
+            fi
+            echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+            helm push $CHART_FILE oci://ghcr.io/gabrielpalmar/hivebox-helm-charts
+
+        - name: Add job summary
+          run: |
+            VERSION=$(cat version.txt)
+            echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+            echo "- Docker image: ghcr.io/gabrielpalmar/hivebox:$VERSION" >> $GITHUB_STEP_SUMMARY
+            echo "- Image digest: $DOCKER_DIGEST" >> $GITHUB_STEP_SUMMARY
+            echo "- Helm chart: hivebox-$VERSION" >> $GITHUB_STEP_SUMMARY

@@ -54,8 +54,8 @@ def store_temperature_data():
             content_type='text/plain'
         )
 
-        return (f"Temperature data successfully uploaded as "
-                f"{destination_file} to bucket {bucket_name}")
+        return (f'Temperature data successfully uploaded as '
+                f'{destination_file} to bucket {bucket_name}\n')
 
     except (S3Error, InvalidResponseError) as exc:
         error_msg = f"MinIO S3 error occurred: {exc}"

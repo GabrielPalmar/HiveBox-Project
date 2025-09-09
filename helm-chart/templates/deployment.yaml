@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivebox
+  labels:
+    app: hivebox
+spec:
+  replicas: {{ .Values.replicas.hivebox }}
+  selector:
+    matchLabels:
+      app: hivebox
+  template:
+    metadata:
+      labels:
+        app: hivebox
+    spec:
+      securityContext:
+        {{- include "common.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: hivebox
+          image: {{ .Values.images.hivebox }}
+          ports:
+            - containerPort: 5000
+          env:
+            - name: REDIS_HOST
+              value: {{ .Values.services.redis | quote }}
+            - name: MINIO_HOST
+              value: {{ .Values.services.minio | quote }}
+          securityContext:
+            {{- include "common.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- include "common.resources" (dict "Values" .Values "name" "hivebox") | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: 5000
+            periodSeconds: 10
+            failureThreshold: 1
+            timeoutSeconds: 480
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5000
+            periodSeconds: 60
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /version
+              port: 5000
+            periodSeconds: 60
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: {{ .Values.replicas.redis }}
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      securityContext:
+        {{- include "common.podSecurityContext" . | nindent 10 }}
+      containers:
+        - name: valkey
+          image: {{ .Values.images.redis }}
+          ports:
+            - containerPort: 6379
+          command: ["valkey-server"]
+          args: ["--save", "", "--appendonly", "no"]
+          securityContext:
+            {{- include "common.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- include "common.resources" (dict "Values" .Values "name" "redis") | nindent 12 }}
+          volumeMounts:
+            - name: valkey-data
+              mountPath: /data
+      volumes:
+        - name: valkey-data
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  labels:
+    app: minio
+spec:
+  replicas: {{ .Values.replicas.minio }}
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      securityContext:
+        {{- include "common.podSecurityContext" . | nindent 10 }}
+      containers:
+        - name: minio
+          image: {{ .Values.images.minio }}
+          ports:
+            - containerPort: 9000
+          command: ["minio", "server", "/data"]
+          env:
+            - name: MINIO_ROOT_USER
+              value: {{ .Values.minio.accessKey | quote }}
+            - name: MINIO_ROOT_PASSWORD
+              value: {{ .Values.minio.secretKey | quote }}
+          securityContext:
+            {{- include "common.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- include "common.resources" (dict "Values" .Values "name" "minio") | nindent 12 }}
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+      volumes:
+        - name: minio-data
+          emptyDir: {}
