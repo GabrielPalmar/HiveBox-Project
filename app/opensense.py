@@ -51,7 +51,7 @@ def get_temperature():
 
     print('Getting data from OpenSenseMap API...')
 
-    response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=300)
+    response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=480)
     print('Data retrieved successfully!')
 
     _sensor_stats["total_sensors"] = sum(

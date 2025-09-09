@@ -6,6 +6,7 @@ metadata:
     app: hivebox-cronjob
 spec:
   schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
   jobTemplate:
     spec:
       template:
@@ -13,6 +14,22 @@ spec:
           restartPolicy: OnFailure
           securityContext:
             {{- include "common.podSecurityContext" . | nindent 12 }}
+          initContainers:
+            - name: wait-for-start
+              image: {{ .Values.images.cronjob }}
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  while true; do
+                    if curl -sSf -m 3 http://hivebox-service/version >/dev/null; then
+                      echo "Hivebox service is up!"
+                      exit 0
+                    else
+                      echo "Waiting for Hivebox service to be available..."
+                      sleep 5
+                    fi
+                  done
           containers:
             - name: temperature-storage
               image: {{ .Values.images.cronjob }}
