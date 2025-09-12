@@ -51,7 +51,11 @@ def get_temperature():
 
     print('Getting data from OpenSenseMap API...')
     try:
-        response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=480)
+        response = requests.get(
+            "https://api.opensensemap.org/boxes",
+            params=params,
+            timeout=(3, 10)
+        )
         print('Data retrieved successfully!')
     except requests.Timeout:
         print("API request timed out")
