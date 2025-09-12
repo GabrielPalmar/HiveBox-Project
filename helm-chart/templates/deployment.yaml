@@ -43,7 +43,7 @@ spec:
               path: /readyz
               port: 5000
             periodSeconds: 60
-            timeoutSeconds: 3
+            timeoutSeconds: 300
             failureThreshold: 3
           livenessProbe:
             httpGet:
