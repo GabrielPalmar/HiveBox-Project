@@ -1,12 +1,6 @@
-'''Module to get entries from OpenSenseMap API and get the average temperature'''
 from datetime import datetime, timezone, timedelta
 import re
 import requests
-import redis
-from app.config import create_redis_client, CACHE_TTL
-
-# Use shared Redis client
-redis_client, REDIS_AVAILABLE = create_redis_client()
 
 _sensor_stats = {"total_sensors": 0, "null_count": 0}
 
@@ -28,16 +22,6 @@ def classify_temperature(average):
 
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
-    if REDIS_AVAILABLE:
-        try:
-            cached_data = redis_client.get("temperature_data")
-            if cached_data:
-                print("Using cached data from Redis.")
-                # Return cached data with default stats (since we don't have fresh stats)
-                default_stats = {"total_sensors": 0, "null_count": 0}
-                return cached_data, default_stats
-        except redis.RedisError as e:
-            print(f"Redis error: {e}. Proceeding without cache.")
 
     print("Fetching new data from OpenSenseMap API...")
 
@@ -50,15 +34,9 @@ def get_temperature():
     }
 
     print('Getting data from OpenSenseMap API...')
-    try:
-        response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=480)
-        print('Data retrieved successfully!')
-    except requests.Timeout:
-        print("API request timed out")
-        return "Error: API request timed out\n", {"total_sensors": 0, "null_count": 0}
-    except requests.RequestException as e:
-        print(f"API request failed: {e}")
-        return f"Error: API request failed - {e}\n", {"total_sensors": 0, "null_count": 0}
+
+    response = requests.get("https://api.opensensemap.org/boxes", params=params, timeout=480)
+    print('Data retrieved successfully!')
 
     _sensor_stats["total_sensors"] = sum(
         1 for line in response.text.splitlines() if re.search(r'^\s*"sensors"\s*:\s*\[', line)
@@ -71,7 +49,7 @@ def get_temperature():
 
     for sensor_list in res:
         for measure in sensor_list:
-            if measure.get('unit') == "\u00b0C" and 'lastMeasurement' in measure:
+            if measure.get('unit') == "°C" and 'lastMeasurement' in measure:
                 last_measurement = measure['lastMeasurement']
                 if last_measurement is not None and 'value' in last_measurement:
                     last_measurement_int = float(last_measurement['value'])
@@ -85,11 +63,5 @@ def get_temperature():
     status = classify_temperature(average)
     result = f'Average temperature: {average:.2f} °C ({status})\n'
 
-    if REDIS_AVAILABLE:
-        try:
-            redis_client.setex("temperature_data", CACHE_TTL, result)
-            print("Data cached in Redis.")
-        except redis.RedisError as e:
-            print(f"Redis error while caching data: {e}")
 
     return result, _sensor_stats
