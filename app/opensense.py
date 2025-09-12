@@ -71,7 +71,7 @@ def get_temperature():
 
     for sensor_list in res:
         for measure in sensor_list:
-            if measure.get('unit') == "\u00b0C" and 'lastMeasurement' in measure:
+            if measure.get('unit') == "°C" and 'lastMeasurement' in measure:
                 last_measurement = measure['lastMeasurement']
                 if last_measurement is not None and 'value' in last_measurement:
                     last_measurement_int = float(last_measurement['value'])
