@@ -1,6 +1,6 @@
-Flask==3.1.1
-requests==2.32.4
+Flask==3.1.2
+requests==2.32.5
 prometheus-client==0.22.1
-redis==6.2.0
+redis==6.4.0
 minio==7.2.16
 ijson==3.4.0
