@@ -26,7 +26,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt  
+            pip install pylint
+            pip install flask
+            pip install requests
+            pip install vcrpy
+            pip install prometheus_client
+            pip install redis
+            pip install minio
+            pip install ijson
       - name: Analysing the code with pylint
         run: |
           # Set PYTHONPATH so pylint can find the app module

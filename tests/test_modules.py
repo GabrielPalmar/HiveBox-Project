@@ -2,8 +2,9 @@
 import re
 import unittest
 import unittest.mock as mock
-import requests  # added
-import redis     # added
+import requests  
+import redis     
+import io, json
 from minio.error import S3Error, InvalidResponseError
 from app.storage import store_temperature_data
 from app.main import app
@@ -79,6 +80,20 @@ class MockOpenSenseResponse:
     def __init__(self, temp_value):
         self.text = "mock response text"
         self.temp_value = temp_value
+        payload = json.dumps([{
+            'sensors': [
+                {
+                    'title': 'Temperatur',
+                    'unit': '°C',
+                    'lastMeasurement': {'value': str(self.temp_value)}
+                }
+            ]
+        }]).encode('utf-8')
+        self.raw = io.BytesIO(payload)
+        self.raw.decode_content = False
+
+    def raise_for_status(self):
+        return None
 
     def json(self):
         """Return a mock JSON response."""
