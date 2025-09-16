@@ -1,8 +1,10 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
+from datetime import datetime, timezone, timedelta
+import json
 import requests
 import redis
 import ijson
-from datetime import datetime, timezone, timedelta
+from ijson.common import JSONError as IjsonJSONError
 from app.config import create_redis_client, CACHE_TTL
 
 redis_client, REDIS_AVAILABLE = create_redis_client()
@@ -28,7 +30,9 @@ def get_temperature():
             cached_data = redis_client.get("temperature_data")
             if cached_data:
                 default_stats = {"total_sensors": 0, "null_count": 0}
-                cached_str = cached_data.decode("utf-8") if isinstance(cached_data, (bytes, bytearray)) else cached_data
+                cached_str = cached_data.decode("utf-8") if isinstance(
+                    cached_data,
+                    (bytes, bytearray)) else cached_data
                 return cached_str, default_stats
         except redis.RedisError:
             pass
@@ -58,9 +62,9 @@ def get_temperature():
     sensor_count = 0
     _sensor_stats["null_count"] = 0
 
-    try:
-        if hasattr(response, "raw") and response.raw:
-            # Stream parse with ijson
+    if hasattr(response, "raw") and getattr(response, "raw", None):
+        # Stream parse with ijson
+        try:
             for sensor in ijson.items(response.raw, 'item.sensors.item'):
                 sensor_count += 1
                 if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
@@ -73,25 +77,28 @@ def get_temperature():
                             _sensor_stats["null_count"] += 1
                     else:
                         _sensor_stats["null_count"] += 1
-        else:
-            # Fallback for mocks/tests without .raw
+        except IjsonJSONError as e:
+            return f"Error: parse failed - {e}\n", {"total_sensors": 0, "null_count": 0}
+    else:
+        # Fallback for mocks/tests without .raw
+        try:
             boxes = response.json()
-            for box in boxes:
-                sensors = box.get("sensors", [])
-                for sensor in sensors:
-                    sensor_count += 1
-                    if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
-                        last = sensor.get('lastMeasurement')
-                        if last is not None and 'value' in last:
-                            try:
-                                temp_sum += float(last['value'])
-                                temp_count += 1
-                            except (TypeError, ValueError):
-                                _sensor_stats["null_count"] += 1
-                        else:
+        except (json.JSONDecodeError, ValueError) as e:
+            return f"Error: parse failed - {e}\n", {"total_sensors": 0, "null_count": 0}
+        for box in boxes:
+            sensors = box.get("sensors", [])
+            for sensor in sensors:
+                sensor_count += 1
+                if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
+                    last = sensor.get('lastMeasurement')
+                    if last is not None and 'value' in last:
+                        try:
+                            temp_sum += float(last['value'])
+                            temp_count += 1
+                        except (TypeError, ValueError):
                             _sensor_stats["null_count"] += 1
-    except Exception as e:
-        return f"Error: parse failed - {e}\n", {"total_sensors": 0, "null_count": 0}
+                    else:
+                        _sensor_stats["null_count"] += 1
 
     _sensor_stats["total_sensors"] = sensor_count
     average = (temp_sum / temp_count) if temp_count else 0.0

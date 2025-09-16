@@ -2,9 +2,10 @@
 import re
 import unittest
 import unittest.mock as mock
-import requests  
-import redis     
-import io, json
+import io
+import json
+import requests
+import redis
 from minio.error import S3Error, InvalidResponseError
 from app.storage import store_temperature_data
 from app.main import app
@@ -93,6 +94,7 @@ class MockOpenSenseResponse:
         self.raw.decode_content = False
 
     def raise_for_status(self):
+        """Raise an error for HTTP errors."""
         return None
 
     def json(self):
