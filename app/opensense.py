@@ -1,8 +1,8 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
 from datetime import datetime, timezone, timedelta
-import re
 import requests
 import redis
+import ijson
 from app.config import create_redis_client, CACHE_TTL
 
 # Use shared Redis client
@@ -33,9 +33,9 @@ def get_temperature():
             cached_data = redis_client.get("temperature_data")
             if cached_data:
                 print("Using cached data from Redis.")
-                # Return cached data with default stats (since we don't have fresh stats)
                 default_stats = {"total_sensors": 0, "null_count": 0}
-                return cached_data, default_stats
+                cached_str = cached_data.decode("utf-8") if isinstance(cached_data, (bytes, bytearray)) else cached_data
+                return cached_str, default_stats
         except redis.RedisError as e:
             print(f"Redis error: {e}. Proceeding without cache.")
 
@@ -43,19 +43,18 @@ def get_temperature():
 
     # Ensuring that data is not older than 1 hour.
     time_iso = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
-
-    params = {
-        "date": time_iso,
-        "format": "json"
-    }
+    params = {"date": time_iso, "format": "json"}
 
     print('Getting data from OpenSenseMap API...')
     try:
         response = requests.get(
             "https://api.opensensemap.org/boxes",
             params=params,
-            timeout=(3, 10)
+            stream=True,                 # stream the response
+            timeout=(60, 90)             # (connect, read) timeouts
         )
+        response.raise_for_status()
+        response.raw.decode_content = True  # allow gzip decompression on the stream
         print('Data retrieved successfully!')
     except requests.Timeout:
         print("API request timed out")
@@ -64,28 +63,32 @@ def get_temperature():
         print(f"API request failed: {e}")
         return f"Error: API request failed - {e}\n", {"total_sensors": 0, "null_count": 0}
 
-    _sensor_stats["total_sensors"] = sum(
-        1 for line in response.text.splitlines() if re.search(r'^\s*"sensors"\s*:\s*\[', line)
-    )
+    # Stream parse: each top-level item is a box; each has sensors (list).
+    temp_sum = 0.0
+    temp_count = 0
+    sensor_count = 0
+    _sensor_stats["null_count"] = 0
 
-    res = [d.get('sensors') for d in response.json() if 'sensors' in d]
-
-    temp_list = []
-    _sensor_stats["null_count"] = 0  # Initialize counter for null measurements
-
-    for sensor_list in res:
-        for measure in sensor_list:
-            if measure.get('unit') == "°C" and 'lastMeasurement' in measure:
-                last_measurement = measure['lastMeasurement']
-                if last_measurement is not None and 'value' in last_measurement:
-                    last_measurement_int = float(last_measurement['value'])
-                    temp_list.append(last_measurement_int)
+    try:
+        for sensor in ijson.items(response.raw, 'item.sensors.item'):
+            sensor_count += 1
+            if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
+                last = sensor.get('lastMeasurement')
+                if last is not None and 'value' in last:
+                    try:
+                        temp_sum += float(last['value'])
+                        temp_count += 1
+                    except (TypeError, ValueError):
+                        _sensor_stats["null_count"] += 1
                 else:
                     _sensor_stats["null_count"] += 1
+    except ijson.JSONError as e:
+        print(f"Streaming JSON parse error: {e}")
+        return f"Error: parse failed - {e}\n", {"total_sensors": 0, "null_count": 0}
 
-    average = sum(temp_list) / len(temp_list) if temp_list else 0
+    _sensor_stats["total_sensors"] = sensor_count
+    average = (temp_sum / temp_count) if temp_count else 0.0
 
-    # Use the dictionary-based classification
     status = classify_temperature(average)
     result = f'Average temperature: {average:.2f} °C ({status})\n'
 
