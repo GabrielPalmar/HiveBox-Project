@@ -3,3 +3,4 @@ requests==2.32.4
 prometheus-client==0.22.1
 redis==6.2.0
 minio==7.2.16
+ijson==3.4.0
