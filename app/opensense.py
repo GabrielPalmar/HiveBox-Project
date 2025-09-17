@@ -1,7 +1,7 @@
 """Module to get entries from OpenSenseMap API and get the average temperature"""
 from datetime import datetime, timezone, timedelta
 import json
-from typing import Iterable, Dict, Tuple, Optional
+from typing import Iterable, Dict, Tuple
 import requests
 import redis
 import ijson
@@ -26,14 +26,12 @@ def classify_temperature(average):
 
 def _iter_sensors_from_stream(stream) -> Iterable[dict]:
     """Yield sensors from a streaming JSON array of boxes."""
-    for sensor in ijson.items(stream, 'item.sensors.item'):
-        yield sensor
+    yield from ijson.items(stream, 'item.sensors.item')
 
 def _iter_sensors_from_json(boxes: Iterable[dict]) -> Iterable[dict]:
     """Yield sensors from a loaded list of boxes."""
     for box in boxes:
-        for sensor in box.get("sensors", []):
-            yield sensor
+        yield from box.get("sensors", [])
 
 def _compute_stats(sensors: Iterable[dict]) -> Tuple[float, int, Dict[str, int]]:
     """Compute temperature sum/count and stats from an iterable of sensors."""
@@ -43,16 +41,20 @@ def _compute_stats(sensors: Iterable[dict]) -> Tuple[float, int, Dict[str, int]]
 
     for sensor in sensors:
         stats["total_sensors"] += 1
-        if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
-            last = sensor.get('lastMeasurement')
-            if last is not None and 'value' in last:
-                try:
-                    temp_sum += float(last['value'])
-                    temp_count += 1
-                except (TypeError, ValueError):
-                    stats["null_count"] += 1
-            else:
-                stats["null_count"] += 1
+        if sensor.get('unit') != "°C":
+            continue
+
+        last = sensor.get('lastMeasurement')
+        if not last or 'value' not in last:
+            stats["null_count"] += 1
+            continue
+
+        try:
+            temp_sum += float(last['value'])
+            temp_count += 1
+        except (TypeError, ValueError):
+            stats["null_count"] += 1
+
     return temp_sum, temp_count, stats
 
 def _empty_stats() -> Dict[str, int]:
