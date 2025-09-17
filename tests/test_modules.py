@@ -1,9 +1,12 @@
 '''This module contains tests for the Flask and OpenSense modules.'''
+# pylint: disable=protected-access
 import re
 import unittest
 import unittest.mock as mock
-import requests  # added
-import redis     # added
+import io
+import json
+import requests
+import redis
 from minio.error import S3Error, InvalidResponseError
 from app.storage import store_temperature_data
 from app.main import app
@@ -79,6 +82,21 @@ class MockOpenSenseResponse:
     def __init__(self, temp_value):
         self.text = "mock response text"
         self.temp_value = temp_value
+        payload = json.dumps([{
+            'sensors': [
+                {
+                    'title': 'Temperatur',
+                    'unit': '°C',
+                    'lastMeasurement': {'value': str(self.temp_value)}
+                }
+            ]
+        }]).encode('utf-8')
+        self.raw = io.BytesIO(payload)
+        self.raw.decode_content = False
+
+    def raise_for_status(self):
+        """Raise an error for HTTP errors."""
+        return None
 
     def json(self):
         """Return a mock JSON response."""
@@ -91,6 +109,25 @@ class MockOpenSenseResponse:
                 }
             ]
         }]
+
+
+class FakeRespStreamBad:
+    """Response with an invalid JSON stream to trigger ijson parse error."""
+    def __init__(self):
+        self.raw = io.BytesIO(b'{"not_valid_json"')
+        self.raw.decode_content = False
+    def raise_for_status(self):
+        """No-op for status check."""
+        return None
+
+class FakeRespJSONBad:
+    """Response without .raw; .json raises to trigger fallback error."""
+    def json(self):
+        """Raise JSON decode error."""
+        raise ValueError("bad json")
+    def raise_for_status(self):
+        """No-op for status check."""
+        return None
 
 
 class TestOpenSense(unittest.TestCase):
@@ -162,6 +199,98 @@ class TestOpenSense(unittest.TestCase):
             call_args = mock_redis_client.setex.call_args
             self.assertEqual(call_args[0][0], "temperature_data")
             self.assertGreater(call_args[0][1], 0)  # TTL should be positive
+
+    def test_cache_hit_bytes_decoded(self):
+        """Redis returns bytes; ensure decoded string is returned."""
+        mock_redis_client = mock.MagicMock()
+        mock_redis_client.get.return_value = b"cached_result"
+        with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+             mock.patch('app.opensense.redis_client', mock_redis_client), \
+             mock.patch('app.opensense.requests.get') as req_get:
+            result, stats = opensense.get_temperature()
+        self.assertEqual(result, "cached_result")
+        self.assertEqual(stats, {"total_sensors": 0, "null_count": 0})
+        req_get.assert_not_called()
+
+    def test_api_timeout(self):
+        """requests timeout should return timeout error string and empty stats."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', False), \
+             mock.patch('app.opensense.requests.get', side_effect=requests.Timeout):
+            result, stats = opensense.get_temperature()
+        self.assertTrue(result.startswith("Error: API request timed out"))
+        self.assertEqual(stats, {"total_sensors": 0, "null_count": 0})
+
+    def test_api_request_exception(self):
+        """Generic request exception should return error string and empty stats."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', False), \
+             mock.patch(
+                 'app.opensense.requests.get',
+                 side_effect=requests.RequestException("boom")
+                 ):
+            result, stats = opensense.get_temperature()
+        self.assertIn("API request failed", result)
+        self.assertEqual(stats, {"total_sensors": 0, "null_count": 0})
+
+    def test_streaming_parse_error(self):
+        """Invalid stream should trigger parse error path."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', False), \
+             mock.patch('app.opensense._request_boxes', return_value=(FakeRespStreamBad(), None)):
+            result, stats = opensense.get_temperature()
+        self.assertTrue(result.startswith("Error: parse failed"))
+        self.assertEqual(stats, {"total_sensors": 0, "null_count": 0})
+
+    def test_fallback_json_decode_error(self):
+        """When no .raw, JSON decode error should be handled."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', False), \
+             mock.patch('app.opensense._request_boxes', return_value=(FakeRespJSONBad(), None)):
+            result, stats = opensense.get_temperature()
+        self.assertTrue(result.startswith("Error: parse failed"))
+        self.assertEqual(stats, {"total_sensors": 0, "null_count": 0})
+
+
+class TestOpenSenseHelpers(unittest.TestCase):
+    """Unit tests for helper functions in opensense."""
+    def test_classify_temperature_ranges(self):
+        """Test temperature classification logic."""
+        self.assertIn("Too cold", opensense.classify_temperature(-5))
+        self.assertEqual("Good", opensense.classify_temperature(20))
+        self.assertEqual("Good", opensense.classify_temperature(36))
+        self.assertIn("Too hot", opensense.classify_temperature(40))
+
+    def test_compute_stats_counts(self):
+        """Test statistics computation from sensor data."""
+        sensors = [
+            {"unit": "°C", "lastMeasurement": {"value": "10"}},
+            {"unit": "°C", "lastMeasurement": {"value": "x"}},
+            {"unit": "°C"},
+            {"unit": "°F", "lastMeasurement": {"value": "20"}},
+        ]
+        temp_sum, temp_count, stats = opensense._compute_stats(sensors)
+        self.assertEqual(temp_sum, 10.0)
+        self.assertEqual(temp_count, 1)
+        self.assertEqual(stats["total_sensors"], len(sensors))
+        self.assertEqual(stats["null_count"], 2)
+
+    def test_iter_sensors_from_json(self):
+        """Test sensor iteration from loaded JSON boxes."""
+        boxes = [
+            {"sensors": [{"unit": "°C"}, {"unit": "°F"}]},
+            {"sensors": [{"unit": "°C"}]},
+        ]
+        items = list(opensense._iter_sensors_from_json(boxes))
+        self.assertEqual(len(items), 3)
+        self.assertTrue(all(isinstance(s, dict) for s in items))
+
+    def test_iter_sensors_from_stream(self):
+        """Test sensor iteration from streaming JSON boxes."""
+        payload = json.dumps([
+            {"sensors": [{"unit": "°C"}, {"unit": "°F"}]},
+            {"sensors": [{"unit": "°C"}]},
+        ]).encode("utf-8")
+        stream = io.BytesIO(payload)
+        sensors = list(opensense._iter_sensors_from_stream(stream))
+        self.assertEqual(len(sensors), 3)
+        self.assertEqual(sum(1 for s in sensors if s.get("unit") == "°C"), 2)
 
 
 class TestStorage(unittest.TestCase):
