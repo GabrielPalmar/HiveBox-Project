@@ -1,7 +1,7 @@
 """Module to get entries from OpenSenseMap API and get the average temperature"""
 from datetime import datetime, timezone, timedelta
 import json
-from typing import Iterable, Dict, Tuple
+from typing import Iterable, Dict, Tuple, Optional
 import requests
 import redis
 import ijson
