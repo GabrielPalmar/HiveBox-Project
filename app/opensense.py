@@ -1,6 +1,7 @@
-'''Module to get entries from OpenSenseMap API and get the average temperature'''
+"""Module to get entries from OpenSenseMap API and get the average temperature"""
 from datetime import datetime, timezone, timedelta
 import json
+from typing import Iterable, Dict, Tuple, Optional
 import requests
 import redis
 import ijson
@@ -12,7 +13,7 @@ redis_client, REDIS_AVAILABLE = create_redis_client()
 _sensor_stats = {"total_sensors": 0, "null_count": 0}
 
 def classify_temperature(average):
-    '''Classify temperature based on ranges using dictionary approach'''
+    """Classify temperature based on ranges using dictionary approach"""
     temp_classifications = {
         "cold": (float('-inf'), 10, "Warning: Too cold"),
         "good": (10, 36, "Good"),
@@ -23,92 +24,115 @@ def classify_temperature(average):
             return status
     return "Unknown"
 
-def get_temperature():
-    '''Function to get the average temperature from OpenSenseMap API.'''
-    if REDIS_AVAILABLE:
-        try:
-            cached_data = redis_client.get("temperature_data")
-            if cached_data:
-                default_stats = {"total_sensors": 0, "null_count": 0}
-                cached_str = cached_data.decode("utf-8") if isinstance(
-                    cached_data,
-                    (bytes, bytearray)) else cached_data
-                return cached_str, default_stats
-        except redis.RedisError:
-            pass
+def _iter_sensors_from_stream(stream) -> Iterable[dict]:
+    """Yield sensors from a streaming JSON array of boxes."""
+    for sensor in ijson.items(stream, 'item.sensors.item'):
+        yield sensor
 
-    # Ensuring that data is not older than 1 hour.
-    time_iso = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
-    params = {"date": time_iso, "format": "json"}
+def _iter_sensors_from_json(boxes: Iterable[dict]) -> Iterable[dict]:
+    """Yield sensors from a loaded list of boxes."""
+    for box in boxes:
+        for sensor in box.get("sensors", []):
+            yield sensor
 
+def _compute_stats(sensors: Iterable[dict]) -> Tuple[float, int, Dict[str, int]]:
+    """Compute temperature sum/count and stats from an iterable of sensors."""
+    temp_sum = 0.0
+    temp_count = 0
+    stats = {"total_sensors": 0, "null_count": 0}
+
+    for sensor in sensors:
+        stats["total_sensors"] += 1
+        if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
+            last = sensor.get('lastMeasurement')
+            if last is not None and 'value' in last:
+                try:
+                    temp_sum += float(last['value'])
+                    temp_count += 1
+                except (TypeError, ValueError):
+                    stats["null_count"] += 1
+            else:
+                stats["null_count"] += 1
+    return temp_sum, temp_count, stats
+
+def _empty_stats() -> Dict[str, int]:
+    return {"total_sensors": 0, "null_count": 0}
+
+def _get_cached_temperature() -> Optional[str]:
+    if not REDIS_AVAILABLE:
+        return None
     try:
-        response = requests.get(
+        cached = redis_client.get("temperature_data")
+        if cached:
+            return cached.decode("utf-8") if isinstance(cached, (bytes, bytearray)) else cached
+    except redis.RedisError:
+        return None
+    return None
+
+def _set_cached_temperature(value: str) -> None:
+    if not REDIS_AVAILABLE:
+        return
+    try:
+        redis_client.setex("temperature_data", CACHE_TTL, value)
+    except redis.RedisError:
+        pass
+
+def _build_params() -> Dict[str, str]:
+    time_iso = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    return {"date": time_iso, "format": "json"}
+
+def _request_boxes(params: Dict[str, str]):
+    try:
+        resp = requests.get(
             "https://api.opensensemap.org/boxes",
             params=params,
             stream=True,
-            timeout=(60, 90)  # (connect, read)
+            timeout=(60, 90)
         )
-        if hasattr(response, "raise_for_status"):
-            response.raise_for_status()
-        if hasattr(response, "raw") and hasattr(response.raw, "decode_content"):
-            response.raw.decode_content = True
+        if hasattr(resp, "raise_for_status"):
+            resp.raise_for_status()
+        if hasattr(resp, "raw") and hasattr(resp.raw, "decode_content"):
+            resp.raw.decode_content = True
+        return resp, None
     except requests.Timeout:
-        return "Error: API request timed out\n", {"total_sensors": 0, "null_count": 0}
+        return None, "Error: API request timed out\n"
     except requests.RequestException as e:
-        return f"Error: API request failed - {e}\n", {"total_sensors": 0, "null_count": 0}
+        return None, f"Error: API request failed - {e}\n"
 
-    temp_sum = 0.0
-    temp_count = 0
-    sensor_count = 0
-    _sensor_stats["null_count"] = 0
-
+def _make_sensor_iter(response) -> Tuple[Optional[Iterable[dict]], Optional[str]]:
+    # Prefer streaming if raw is available; otherwise load JSON once.
     if hasattr(response, "raw") and getattr(response, "raw", None):
-        # Stream parse with ijson
-        try:
-            for sensor in ijson.items(response.raw, 'item.sensors.item'):
-                sensor_count += 1
-                if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
-                    last = sensor.get('lastMeasurement')
-                    if last is not None and 'value' in last:
-                        try:
-                            temp_sum += float(last['value'])
-                            temp_count += 1
-                        except (TypeError, ValueError):
-                            _sensor_stats["null_count"] += 1
-                    else:
-                        _sensor_stats["null_count"] += 1
-        except IjsonJSONError as e:
-            return f"Error: parse failed - {e}\n", {"total_sensors": 0, "null_count": 0}
-    else:
-        # Fallback for mocks/tests without .raw
-        try:
-            boxes = response.json()
-        except (json.JSONDecodeError, ValueError) as e:
-            return f"Error: parse failed - {e}\n", {"total_sensors": 0, "null_count": 0}
-        for box in boxes:
-            sensors = box.get("sensors", [])
-            for sensor in sensors:
-                sensor_count += 1
-                if sensor.get('unit') == "°C" and 'lastMeasurement' in sensor:
-                    last = sensor.get('lastMeasurement')
-                    if last is not None and 'value' in last:
-                        try:
-                            temp_sum += float(last['value'])
-                            temp_count += 1
-                        except (TypeError, ValueError):
-                            _sensor_stats["null_count"] += 1
-                    else:
-                        _sensor_stats["null_count"] += 1
+        return _iter_sensors_from_stream(response.raw), None
+    try:
+        boxes = response.json()
+    except (json.JSONDecodeError, ValueError) as e:
+        return None, f"Error: parse failed - {e}\n"
+    return _iter_sensors_from_json(boxes), None
 
-    _sensor_stats["total_sensors"] = sensor_count
+def get_temperature():
+    '''Function to get the average temperature from OpenSenseMap API.'''
+    cached = _get_cached_temperature()
+    if cached:
+        return cached, _empty_stats()
+
+    params = _build_params()
+    response, err = _request_boxes(params)
+    if err:
+        return err, _empty_stats()
+
+    sensors_iter, err = _make_sensor_iter(response)
+    if err or sensors_iter is None:
+        return err or "Error: parser unavailable\n", _empty_stats()
+
+    try:
+        temp_sum, temp_count, stats = _compute_stats(sensors_iter)
+    except IjsonJSONError as e:
+        return f"Error: parse failed - {e}\n", _empty_stats()
+
     average = (temp_sum / temp_count) if temp_count else 0.0
     status = classify_temperature(average)
     result = f'Average temperature: {average:.2f} °C ({status})\n'
 
-    if REDIS_AVAILABLE:
-        try:
-            redis_client.setex("temperature_data", CACHE_TTL, result)
-        except redis.RedisError:
-            pass
-
+    _set_cached_temperature(result)
+    _sensor_stats.update(stats)
     return result, _sensor_stats
