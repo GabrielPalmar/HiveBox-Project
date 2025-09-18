@@ -5,6 +5,7 @@ import unittest
 import unittest.mock as mock
 import io
 import json
+import importlib
 import requests
 import redis
 from minio.error import S3Error, InvalidResponseError
@@ -528,6 +529,46 @@ class TestReadiness(unittest.TestCase):
              mock.patch('app.readiness.reachable_boxes', return_value=400):
             result = readiness.readiness_check()
             self.assertEqual(result, 200)
+
+
+class TestOpenSenseExceptionBranches(unittest.TestCase):
+    """Covers exception branches in opensense module."""
+
+    def test_set_cached_temperature_redis_error_is_swallowed(self):
+        """_set_cached_temperature should swallow RedisError (pass)."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+             mock.patch('app.opensense.REDIS_CLIENT') as mock_client:
+            mock_client.setex.side_effect = redis.RedisError("boom")
+            # Should not raise
+            opensense._set_cached_temperature("value")
+            mock_client.setex.assert_called_once()
+
+    def test_get_cached_temperature_redis_error_returns_none(self):
+        """_get_cached_temperature should return None on RedisError."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+             mock.patch('app.opensense.REDIS_CLIENT') as mock_client:
+            mock_client.get.side_effect = redis.RedisError("boom")
+            result = opensense._get_cached_temperature()
+            self.assertIsNone(result)
+            mock_client.get.assert_called_once_with("temperature_data")
+
+    def test_module_level_redis_init_errors_are_caught_all_types(self):
+        """create_redis_client exceptions at import-time are handled (all types)."""
+        for exc in (
+            redis.ConnectionError("c"),
+            redis.TimeoutError("t"),
+            OSError("o"),
+            ImportError("i")):
+            with self.subTest(exc=type(exc).__name__), \
+                 mock.patch('app.config.create_redis_client', side_effect=exc), \
+                 mock.patch('builtins.print'):
+                reloaded = importlib.reload(opensense)
+                self.assertIsNone(reloaded.REDIS_CLIENT)
+                self.assertFalse(reloaded.REDIS_AVAILABLE)
+        # Restore module for other tests
+        with mock.patch('app.config.create_redis_client', return_value=(None, False)), \
+             mock.patch('builtins.print'):
+            importlib.reload(opensense)
 
 
 if __name__ == '__main__':
