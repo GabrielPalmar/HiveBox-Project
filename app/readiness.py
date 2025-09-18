@@ -71,8 +71,9 @@ def check_redis():
         try:
             if REDIS_CLIENT.ping():
                 return '<p>Redis is available &#10004;</p>', True
-            else:
-                return '<p>Redis ping failed &#10060;</p>', False
+
+            return '<p>Redis ping failed &#10060;</p>', False
+
         except redis.RedisError as e:
             return f'<p>Redis connection failed &#10060;: {e}</p>', False
     else:
