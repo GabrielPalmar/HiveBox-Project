@@ -5,6 +5,7 @@ import unittest
 import unittest.mock as mock
 import io
 import json
+import importlib
 import requests
 import redis
 from minio.error import S3Error, InvalidResponseError
@@ -82,6 +83,7 @@ class MockOpenSenseResponse:
     def __init__(self, temp_value):
         self.text = "mock response text"
         self.temp_value = temp_value
+        self.status_code = 200  # Add this attribute
         payload = json.dumps([{
             'sensors': [
                 {
@@ -174,7 +176,7 @@ class TestOpenSense(unittest.TestCase):
         mock_redis_client.get.return_value = "cached_result"
 
         with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
-             mock.patch('app.opensense.redis_client', mock_redis_client), \
+             mock.patch('app.opensense.REDIS_CLIENT', mock_redis_client), \
              mock.patch('app.opensense.requests.get') as mock_requests:
 
             result, _ = opensense.get_temperature()
@@ -188,7 +190,7 @@ class TestOpenSense(unittest.TestCase):
         mock_redis_client.get.return_value = None
 
         with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
-             mock.patch('app.opensense.redis_client', mock_redis_client), \
+             mock.patch('app.opensense.REDIS_CLIENT', mock_redis_client), \
              mock.patch('app.opensense.requests.get',
                        return_value=MockOpenSenseResponse(25)):
 
@@ -205,7 +207,7 @@ class TestOpenSense(unittest.TestCase):
         mock_redis_client = mock.MagicMock()
         mock_redis_client.get.return_value = b"cached_result"
         with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
-             mock.patch('app.opensense.redis_client', mock_redis_client), \
+             mock.patch('app.opensense.REDIS_CLIENT', mock_redis_client), \
              mock.patch('app.opensense.requests.get') as req_get:
             result, stats = opensense.get_temperature()
         self.assertEqual(result, "cached_result")
@@ -404,7 +406,7 @@ class TestReadiness(unittest.TestCase):
         mock_redis_client.ttl.return_value = -2  # Key doesn't exist
 
         with mock.patch('app.readiness.REDIS_AVAILABLE', True), \
-             mock.patch('app.readiness.redis_client', mock_redis_client):
+             mock.patch('app.readiness.REDIS_CLIENT', mock_redis_client):
             result = readiness.check_caching()
             self.assertTrue(result)
 
@@ -414,7 +416,7 @@ class TestReadiness(unittest.TestCase):
         mock_redis_client.ttl.return_value = -1  # Key exists but no expiry
 
         with mock.patch('app.readiness.REDIS_AVAILABLE', True), \
-             mock.patch('app.readiness.redis_client', mock_redis_client):
+             mock.patch('app.readiness.REDIS_CLIENT', mock_redis_client):
             result = readiness.check_caching()
             self.assertTrue(result)
 
@@ -424,7 +426,7 @@ class TestReadiness(unittest.TestCase):
         mock_redis_client.ttl.return_value = 150  # 2.5 minutes remaining
 
         with mock.patch('app.readiness.REDIS_AVAILABLE', True), \
-             mock.patch('app.readiness.redis_client', mock_redis_client):
+             mock.patch('app.readiness.REDIS_CLIENT', mock_redis_client):
             result = readiness.check_caching()
             self.assertFalse(result)  # Cache is fresh
 
@@ -434,7 +436,7 @@ class TestReadiness(unittest.TestCase):
         mock_redis_client.ttl.side_effect = redis.RedisError("boom")
 
         with mock.patch('app.readiness.REDIS_AVAILABLE', True), \
-             mock.patch('app.readiness.redis_client', mock_redis_client), \
+             mock.patch('app.readiness.REDIS_CLIENT', mock_redis_client), \
              mock.patch('builtins.print'):
             result = readiness.check_caching()
             self.assertTrue(result)
@@ -527,6 +529,46 @@ class TestReadiness(unittest.TestCase):
              mock.patch('app.readiness.reachable_boxes', return_value=400):
             result = readiness.readiness_check()
             self.assertEqual(result, 200)
+
+
+class TestOpenSenseExceptionBranches(unittest.TestCase):
+    """Covers exception branches in opensense module."""
+
+    def test_set_cached_temperature_redis_error_is_swallowed(self):
+        """_set_cached_temperature should swallow RedisError (pass)."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+             mock.patch('app.opensense.REDIS_CLIENT') as mock_client:
+            mock_client.setex.side_effect = redis.RedisError("boom")
+            # Should not raise
+            opensense._set_cached_temperature("value")
+            mock_client.setex.assert_called_once()
+
+    def test_get_cached_temperature_redis_error_returns_none(self):
+        """_get_cached_temperature should return None on RedisError."""
+        with mock.patch('app.opensense.REDIS_AVAILABLE', True), \
+             mock.patch('app.opensense.REDIS_CLIENT') as mock_client:
+            mock_client.get.side_effect = redis.RedisError("boom")
+            result = opensense._get_cached_temperature()
+            self.assertIsNone(result)
+            mock_client.get.assert_called_once_with("temperature_data")
+
+    def test_module_level_redis_init_errors_are_caught_all_types(self):
+        """create_redis_client exceptions at import-time are handled (all types)."""
+        for exc in (
+            redis.ConnectionError("c"),
+            redis.TimeoutError("t"),
+            OSError("o"),
+            ImportError("i")):
+            with self.subTest(exc=type(exc).__name__), \
+                 mock.patch('app.config.create_redis_client', side_effect=exc), \
+                 mock.patch('builtins.print'):
+                reloaded = importlib.reload(opensense)
+                self.assertIsNone(reloaded.REDIS_CLIENT)
+                self.assertFalse(reloaded.REDIS_AVAILABLE)
+        # Restore module for other tests
+        with mock.patch('app.config.create_redis_client', return_value=(None, False)), \
+             mock.patch('builtins.print'):
+            importlib.reload(opensense)
 
 
 if __name__ == '__main__':

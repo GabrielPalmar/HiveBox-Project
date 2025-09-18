@@ -8,7 +8,12 @@ import ijson
 from ijson.common import JSONError as IjsonJSONError
 from app.config import create_redis_client, CACHE_TTL
 
-redis_client, REDIS_AVAILABLE = create_redis_client()
+try:
+    REDIS_CLIENT, REDIS_AVAILABLE = create_redis_client()
+except (redis.ConnectionError, redis.TimeoutError, OSError, ImportError) as e:
+    print(f"Warning: Redis client creation failed - {e}")
+    REDIS_CLIENT = None
+    REDIS_AVAILABLE = False
 
 _sensor_stats = {"total_sensors": 0, "null_count": 0}
 
@@ -61,21 +66,25 @@ def _empty_stats() -> Dict[str, int]:
     return {"total_sensors": 0, "null_count": 0}
 
 def _get_cached_temperature() -> Optional[str]:
+    """Return cached temperature string if present, else None."""
     if not REDIS_AVAILABLE:
         return None
     try:
-        cached = redis_client.get("temperature_data")
-        if cached:
-            return cached.decode("utf-8") if isinstance(cached, (bytes, bytearray)) else cached
+        cached_temp = REDIS_CLIENT.get("temperature_data")
+        if cached_temp:
+            return cached_temp.decode("utf-8") if isinstance(
+                cached_temp, (bytes, bytearray)
+                ) else cached_temp
     except redis.RedisError:
         return None
     return None
 
 def _set_cached_temperature(value: str) -> None:
+    """Store only the temperature string in cache."""
     if not REDIS_AVAILABLE:
         return
     try:
-        redis_client.setex("temperature_data", CACHE_TTL, value)
+        REDIS_CLIENT.setex("temperature_data", CACHE_TTL, value)
     except redis.RedisError:
         pass
 
@@ -84,15 +93,19 @@ def _build_params() -> Dict[str, str]:
     return {"date": time_iso, "format": "json"}
 
 def _request_boxes(params: Dict[str, str]):
+    """Perform a single request and return the response or an error string."""
     try:
         resp = requests.get(
             "https://api.opensensemap.org/boxes",
             params=params,
             stream=True,
-            timeout=(60, 90)
+            timeout=(5, 30),
+            headers={
+                'User-Agent': 'HiveBox-Project/1.0',
+                'Accept': 'application/json'
+            }
         )
-        if hasattr(resp, "raise_for_status"):
-            resp.raise_for_status()
+        resp.raise_for_status()
         if hasattr(resp, "raw") and hasattr(resp.raw, "decode_content"):
             resp.raw.decode_content = True
         return resp, None
@@ -113,8 +126,9 @@ def _make_sensor_iter(response) -> Tuple[Optional[Iterable[dict]], Optional[str]
 
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
+
     cached = _get_cached_temperature()
-    if cached:
+    if cached is not None:
         return cached, _empty_stats()
 
     params = _build_params()
@@ -137,4 +151,4 @@ def get_temperature():
 
     _set_cached_temperature(result)
     _sensor_stats.update(stats)
-    return result, _sensor_stats
+    return result, stats

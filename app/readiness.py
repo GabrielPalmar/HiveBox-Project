@@ -5,7 +5,7 @@ import redis
 from app.opensense import get_temperature
 from app.config import create_redis_client
 
-redis_client, REDIS_AVAILABLE = create_redis_client()
+REDIS_CLIENT, REDIS_AVAILABLE = create_redis_client()
 
 def check_caching():
     '''Check if caching content is older than 5 minutes'''
@@ -14,7 +14,7 @@ def check_caching():
 
     try:
         cache_key = "temperature_data"
-        ttl = redis_client.ttl(cache_key)
+        ttl = REDIS_CLIENT.ttl(cache_key)
 
         if ttl in (-2, -1):
             return True
@@ -64,3 +64,15 @@ def readiness_check():
         # If Redis is completely unavailable, still allow the service to be ready
         print(f"Redis error during readiness check: {e}")
         return 200
+
+def check_redis():
+    '''Function to check Redis is Up'''
+    if REDIS_CLIENT:
+        try:
+            if REDIS_CLIENT.ping():
+                return '<p>Redis is available &#10004;</p>', True
+            return '<p>Redis ping failed &#10060;</p>', False
+        except redis.RedisError as e:
+            return f'<p>Redis connection failed &#10060;: {e}</p>', False
+    else:
+        return '<p>Redis is not configured &#10060;</p>', False
