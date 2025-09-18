@@ -2,7 +2,7 @@
 import json
 import requests
 import redis
-from app.opensense import get_temperature
+from app.opensense import get_temperature, REDIS_CLIENT
 from app.config import create_redis_client
 
 redis_client, REDIS_AVAILABLE = create_redis_client()
@@ -64,3 +64,16 @@ def readiness_check():
         # If Redis is completely unavailable, still allow the service to be ready
         print(f"Redis error during readiness check: {e}")
         return 200
+
+def check_redis():
+    '''Function to check Redis is Up'''
+    if REDIS_CLIENT:
+        try:
+            if REDIS_CLIENT.ping():
+                return '<p>Redis is available &#10004;</p>', True
+            else:
+                return '<p>Redis ping failed &#10060;</p>', False
+        except redis.RedisError as e:
+            return f'<p>Redis connection failed &#10060;: {e}</p>', False
+    else:
+        return '<p>Redis is not configured &#10060;</p>', False
