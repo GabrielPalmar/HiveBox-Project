@@ -1,6 +1,6 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
 from datetime import datetime, timezone, timedelta
-import re
+import json
 import requests
 import redis
 from app.config import create_redis_client, CACHE_TTL
@@ -26,6 +26,33 @@ def classify_temperature(average):
 
     return "Unknown"  # Default case
 
+def _parse_partial_json_array(text: str):
+    """Parse as many full objects as possible from a (possibly truncated) JSON array."""
+    decoder = json.JSONDecoder()
+    items = []
+    i = text.find('[')
+    if i == -1:
+        return items
+    i += 1  # past '['
+    n = len(text)
+    while i < n:
+        while i < n and text[i].isspace():
+            i += 1
+        if i >= n or text[i] == ']':
+            break
+        try:
+            obj, end = decoder.raw_decode(text, i)
+        except json.JSONDecodeError:
+            # truncated object at the end; stop with what we have
+            break
+        items.append(obj)
+        i = end
+        while i < n and text[i].isspace():
+            i += 1
+        if i < n and text[i] == ',':
+            i += 1
+    return items
+
 def get_temperature():
     '''Function to get the average temperature from OpenSenseMap API.'''
     if REDIS_AVAILABLE:
@@ -33,9 +60,9 @@ def get_temperature():
             cached_data = redis_client.get("temperature_data")
             if cached_data:
                 print("Using cached data from Redis.")
-                # Return cached data with default stats (since we don't have fresh stats)
+                cached_result = cached_data.decode('utf-8')
                 default_stats = {"total_sensors": 0, "null_count": 0}
-                return cached_data, default_stats
+                return cached_result, default_stats
         except redis.RedisError as e:
             print(f"Redis error: {e}. Proceeding without cache.")
 
@@ -49,14 +76,56 @@ def get_temperature():
         "format": "json"
     }
 
+    # Streaming configuration
+    max_mb = 0.5
+    max_bytes = int(max_mb * 1024 * 1024)
+
     print('Getting data from OpenSenseMap API...')
+
     try:
+        # Stream the response and count bytes
         response = requests.get(
             "https://api.opensensemap.org/boxes",
             params=params,
-            timeout=(3, 10)
+            stream=True,
+            timeout=(180, 60)
         )
-        print('Data retrieved successfully!')
+        response.raise_for_status()
+
+        downloaded = 0
+        chunks = []
+        truncated = False
+
+        for chunk in response.iter_content(chunk_size=64 * 1024):  # 64 KB
+            if not chunk:
+                break
+            chunks.append(chunk)
+            downloaded += len(chunk)
+            if downloaded >= max_bytes:
+                print(f"Reached {max_mb} MB limit ({downloaded:,} bytes), stopping download")
+                truncated = True
+                response.close()
+                break
+
+        print(f'Bytes downloaded: {downloaded:,}')
+        print('Data retrieved successfully!' + (" (partial)" if truncated else ""))
+
+        # Build body and parse JSON
+        body = b"".join(chunks)
+        text = body.decode(response.encoding or "utf-8", errors="replace")
+
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            if not truncated:
+                print("Warning: Unexpected JSON parse error. Trying partial parse.")
+            data = _parse_partial_json_array(text)
+            if not data:
+                return "Error: Failed to parse JSON and no partial objects found\n", {
+                    "total_sensors": 0,
+                    "null_count": 0
+                    }
+
     except requests.Timeout:
         print("API request timed out")
         return "Error: API request timed out\n", {"total_sensors": 0, "null_count": 0}
@@ -64,26 +133,29 @@ def get_temperature():
         print(f"API request failed: {e}")
         return f"Error: API request failed - {e}\n", {"total_sensors": 0, "null_count": 0}
 
-    _sensor_stats["total_sensors"] = sum(
-        1 for line in response.text.splitlines() if re.search(r'^\s*"sensors"\s*:\s*\[', line)
-    )
-
-    res = [d.get('sensors') for d in response.json() if 'sensors' in d]
+    # Process the data (keeping the existing logic)
+    _sensor_stats["total_sensors"] = sum(1 for d in data if isinstance(d, dict) and "sensors" in d)
+    res = [d.get('sensors') for d in data if isinstance(d, dict) and 'sensors' in d]
 
     temp_list = []
-    _sensor_stats["null_count"] = 0  # Initialize counter for null measurements
+    _sensor_stats["null_count"] = 0
 
     for sensor_list in res:
         for measure in sensor_list:
             if measure.get('unit') == "°C" and 'lastMeasurement' in measure:
-                last_measurement = measure['lastMeasurement']
-                if last_measurement is not None and 'value' in last_measurement:
-                    last_measurement_int = float(last_measurement['value'])
-                    temp_list.append(last_measurement_int)
+                last = measure['lastMeasurement']
+                if last is not None and isinstance(last, dict) and 'value' in last:
+                    try:
+                        temp_list.append(float(last['value']))
+                    except (TypeError, ValueError):
+                        _sensor_stats["null_count"] += 1
                 else:
                     _sensor_stats["null_count"] += 1
 
-    average = sum(temp_list) / len(temp_list) if temp_list else 0
+    average = sum(temp_list) / len(temp_list) if temp_list else 0.0
+
+    if not temp_list:
+        print("Warning: No valid temperature readings found")
 
     # Use the dictionary-based classification
     status = classify_temperature(average)
