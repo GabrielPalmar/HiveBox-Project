@@ -1,4 +1,5 @@
 '''This script uploads the output to a MinIO bucket.'''
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 import os
 import io
 import datetime
