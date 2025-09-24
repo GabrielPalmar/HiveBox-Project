@@ -13,13 +13,10 @@ spec:
         spec:
           restartPolicy: OnFailure
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            fsGroup: 1000
             runAsNonRoot: true
-            runAsGroup: 1000
             runAsUser: 1000
-            capabilities:
-              drop: ["ALL"]
+            runAsGroup: 1000
           initContainers:
             - name: wait-for-start
               image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
@@ -36,6 +33,14 @@ spec:
                       sleep 5
                     fi
                   done
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsGroup: 1000
+                runAsUser: 1000
+                capabilities:
+                  drop: ["ALL"]
           containers:
             - name: temperature-storage
               image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922

@@ -1,4 +1,5 @@
 '''Module to get entries from OpenSenseMap API and get the average temperature'''
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 from datetime import datetime, timezone, timedelta
 import json
 import requests
