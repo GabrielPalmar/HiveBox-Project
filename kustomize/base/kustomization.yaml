@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: hivebox
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - cronjob.yaml
+metadata:
+  labels:
+    app: hivebox

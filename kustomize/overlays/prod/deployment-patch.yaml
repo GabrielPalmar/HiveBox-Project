@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivebox
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: hivebox
+          image: ghcr.io/gabrielpalmar/hivebox:0.7.0

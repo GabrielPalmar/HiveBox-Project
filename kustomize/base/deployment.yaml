@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivebox
+  labels:
+    app: hivebox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hivebox
+  template:
+    metadata:
+      labels:
+        app: hivebox
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: hivebox
+          image: ghcr.io/gabrielpalmar/hivebox:latest@sha256:c731999c3fd9b757e2fd816e3c9dcf645dba56647d8a921cb567ece3cf378dc3
+          ports:
+            - containerPort: 5000
+          env:
+            - name: REDIS_HOST
+              value: redis-service
+            - name: MINIO_HOST
+              value: minio-service
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            limits: { memory: "512Mi", cpu: "500m" }
+            requests: { memory: "256Mi", cpu: "250m" }
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 5000
+            initialDelaySeconds: 30
+            timeoutSeconds: 480
+            failureThreshold: 3
+            periodSeconds: 600
+          livenessProbe:
+            httpGet:
+              path: /version
+              port: 5000
+            timeoutSeconds: 3
+            failureThreshold: 3
+            periodSeconds: 60
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: valkey
+          image: valkey/valkey:8-alpine3.22@sha256:0d27f0bca0249f61d060029a6aaf2e16b2c417d68d02a508e1dfb763fa2948b4
+          ports:
+            - containerPort: 6379
+          command: ["valkey-server"]
+          args: ["--save", "", "--appendonly", "no"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsGroup: 1000
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            limits: { memory: "256Mi", cpu: "250m" }
+            requests: { memory: "128Mi", cpu: "100m" }
+          volumeMounts:
+            - name: valkey-data
+              mountPath: /data
+      volumes:
+        - name: valkey-data
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2025-07-23T15-54-02Z@sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0
+          ports:
+            - containerPort: 9000
+          command: ["minio", "server", "/data"]
+          env:
+            - name: MINIO_ROOT_USER
+              value: minioadmin
+            - name: MINIO_ROOT_PASSWORD
+              value: minioadmin
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsGroup: 1000
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            limits: { memory: "256Mi", cpu: "250m" }
+            requests: { memory: "128Mi", cpu: "100m" }
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+      volumes:
+        - name: minio-data
+          emptyDir: {}

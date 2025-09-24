@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: temperature-storage-cronjob
+  labels:
+    app: hivebox-cronjob
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            fsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          initContainers:
+            - name: wait-for-start
+              image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  while true; do
+                    if curl -sSf -m 3 http://hivebox-service/version >/dev/null; then
+                      echo "Hivebox service is up!"
+                      exit 0
+                    else
+                      echo "Waiting for Hivebox service to be available..."
+                      sleep 5
+                    fi
+                  done
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsGroup: 1000
+                runAsUser: 1000
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: temperature-storage
+              image: curlimages/curl:8.15.0@sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+              command: ["curl"]
+              args:
+                - "-f"
+                - "-s"
+                - "-S"
+                - "--max-time"
+                - "60"
+                - "http://hivebox-service/store"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsGroup: 1000
+                runAsUser: 1000
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                limits: { memory: "32Mi", cpu: "50m" }
+                requests: { memory: "16Mi", cpu: "10m" }
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
