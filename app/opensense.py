@@ -61,7 +61,7 @@ def get_temperature():
             cached_data = redis_client.get("temperature_data")
             if cached_data:
                 print("Using cached data from Redis.")
-                cached_result = cached_data.decode('utf-8')
+                cached_result = cached_data
                 default_stats = {"total_sensors": 0, "null_count": 0}
                 return cached_result, default_stats
         except redis.RedisError as e:
