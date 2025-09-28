@@ -18,6 +18,6 @@ jobs:
       - name: Scan repo with kube-linter
         uses: stackrox/kube-linter-action@v1.0.4
         with:
-          directory: helm-charts
+          directory: helm-chart
           format: sarif
           output-file: kube-linter.sarif
