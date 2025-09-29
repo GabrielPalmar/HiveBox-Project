@@ -21,7 +21,7 @@ spec:
         runAsGroup: 1000
       containers:
         - name: hivebox
-          image: ghcr.io/gabrielpalmar/hivebox:latest@sha256:c731999c3fd9b757e2fd816e3c9dcf645dba56647d8a921cb567ece3cf378dc3
+          image: ghcr.io/gabrielpalmar/hivebox:0.7.1@sha256:c731999c6fac6f2f17f746aea7fafe073cf608c49729eb1e189ecf3551c62646
           ports:
             - containerPort: 5000
           env:

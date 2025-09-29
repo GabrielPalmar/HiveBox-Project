@@ -14,6 +14,20 @@ spec:
       labels:
         app: hivebox
     spec:
+      {{- if gt (int .Values.replicas.hivebox) 1 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - hivebox
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
       securityContext:
         {{- include "common.podSecurityContext" . | nindent 8 }}
       containers:
