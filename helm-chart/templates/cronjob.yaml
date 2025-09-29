@@ -30,6 +30,10 @@ spec:
                       sleep 5
                     fi
                   done
+              securityContext:
+                {{- include "common.containerSecurityContext" . | nindent 16 }}
+              resources:
+                {{- include "common.resources" (dict "Values" .Values "name" "cronjob") | nindent 16 }}
           containers:
             - name: temperature-storage
               image: {{ .Values.images.cronjob }}

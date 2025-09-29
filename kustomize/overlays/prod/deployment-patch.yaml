@@ -8,4 +8,4 @@ spec:
     spec:
       containers:
         - name: hivebox
-          image: ghcr.io/gabrielpalmar/hivebox:0.7.0
+          image: ghcr.io/gabrielpalmar/hivebox:0.7.1@sha256:c731999c6fac6f2f17f746aea7fafe073cf608c49729eb1e189ecf3551c62646

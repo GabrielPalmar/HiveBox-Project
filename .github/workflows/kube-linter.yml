@@ -1,0 +1,24 @@
+name: Kube-Linter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan repo with kube-linter
+        uses: stackrox/kube-linter-action@v1.0.4
+        with:
+          directory: helm-chart
