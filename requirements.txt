@@ -295,9 +295,9 @@ markupsafe==3.0.2 \
     #   flask
     #   jinja2
     #   werkzeug
-minio==7.2.16 \
-    --hash=sha256:81e365c8494d591d8204a63ee7596bfdf8a7d06ad1b1507d6b9c1664a95f299a \
-    --hash=sha256:9288ab988ca57c181eb59a4c96187b293131418e28c164392186c2b89026b223
+minio==7.2.18 \
+    --hash=sha256:173402a5716099159c5659f9de75be204ebe248557b9f1cc9cf45aa70e9d3024 \
+    --hash=sha256:f23a6edbff8d0bc4b5c1a61b2628a01c5a3342aefc613ff9c276012e6321108f
     # via -r requirements.in
 prometheus-client==0.23.1 \
     --hash=sha256:6ae8f9081eaaaf153a2e959d2e6c4f4fb57b12ef76c8c7980202f1e57b48b2ce \
