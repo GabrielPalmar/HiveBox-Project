@@ -6,6 +6,7 @@ resources:
   - service.yaml
   - ingress.yaml
   - cronjob.yaml
+  - secrets.yaml
 metadata:
   labels:
     app: hivebox

@@ -35,13 +35,7 @@ jobs:
             pip install vcrpy
 
         - name: Run tests
-          run: |
-            python tests/test_main.py
-            TEST_EXIT_CODE=$?
-            if [ $TEST_EXIT_CODE -ne 0 ]; then
-                echo "Tests failed!"
-                exit $TEST_EXIT_CODE
-            fi
+          run: python tests/test_main.py
 
         - name: Stop Docker container
           run: docker stop $(docker ps -q)

@@ -29,6 +29,16 @@ spec:
               value: redis-service
             - name: MINIO_HOST
               value: minio-service
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: secret-key
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -136,9 +146,15 @@ spec:
           command: ["minio", "server", "/data"]
           env:
             - name: MINIO_ROOT_USER
-              value: minioadmin
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: access-key
             - name: MINIO_ROOT_PASSWORD
-              value: minioadmin
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: secret-key
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -22,8 +22,10 @@ jobs:
             docker tag ghcr.io/gabrielpalmar/hivebox:$(cat version.txt) ghcr.io/gabrielpalmar/hivebox:latest
 
         - name: Push Docker image to GHCR
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           run: |
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker push ghcr.io/gabrielpalmar/hivebox:$(cat version.txt)
             docker push ghcr.io/gabrielpalmar/hivebox:latest
 
@@ -55,13 +57,15 @@ jobs:
             helm package ./helm-chart
         
         - name: Push Helm Chart to GHCR
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           run: |
             CHART_FILE="hivebox-$(cat version.txt).tgz"
             if [ ! -f "$CHART_FILE" ]; then
               echo "Helm chart $CHART_FILE not found"
               exit 1
             fi
-            echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
             helm push $CHART_FILE oci://ghcr.io/gabrielpalmar/hivebox-helm-charts
 
         - name: Add job summary
