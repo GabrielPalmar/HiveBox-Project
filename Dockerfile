@@ -10,14 +10,12 @@ COPY version.txt requirements.txt /app/
 RUN pip install --no-cache-dir -r /app/requirements.txt --require-hashes && \
     chown -R appuser:appgroup /app
 
-ENV FLASK_APP=app.main.py:app \
+ENV FLASK_APP=app.main:app \
     PYTHONUNBUFFERED=1 \
     REDIS_PORT=6379 \
     REDIS_DB=0 \
     CACHE_TTL=300 \
     MINIO_PORT=9000 \
-    MINIO_ACCESS_KEY=minioadmin \
-    MINIO_SECRET_KEY=minioadmin \
     REDIS_HOST=redis \
     MINIO_HOST=minio
 

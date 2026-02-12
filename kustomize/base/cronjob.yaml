@@ -24,15 +24,19 @@ spec:
               args:
                 - |
                   set -eu
-                  while true; do
+                  MAX_RETRIES=60
+                  COUNTER=0
+                  while [ $COUNTER -lt $MAX_RETRIES ]; do
                     if curl -sSf -m 3 http://hivebox-service/version >/dev/null; then
                       echo "Hivebox service is up!"
                       exit 0
-                    else
-                      echo "Waiting for Hivebox service to be available..."
-                      sleep 5
                     fi
+                    echo "Waiting for Hivebox service... ($COUNTER/$MAX_RETRIES)"
+                    sleep 5
+                    COUNTER=$((COUNTER+1))
                   done
+                  echo "Timed out waiting for Hivebox service"
+                  exit 1
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true

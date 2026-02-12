@@ -36,7 +36,7 @@ jobs:
         working-directory: ${{ github.workspace }}
 
       - name: Analyze with SonarQube
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

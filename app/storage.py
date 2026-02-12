@@ -8,11 +8,14 @@ from app import opensense
 
 MINIO_HOST = os.getenv('MINIO_HOST', 'localhost')
 MINIO_PORT = int(os.environ.get('MINIO_PORT', 9000))
-MINIO_ACCESS_KEY = os.environ.get('MINIO_ACCESS_KEY', 'minioadmin')
-MINIO_SECRET_KEY = os.environ.get('MINIO_SECRET_KEY', 'minioadmin')
+MINIO_ACCESS_KEY = os.environ.get('MINIO_ACCESS_KEY', '')
+MINIO_SECRET_KEY = os.environ.get('MINIO_SECRET_KEY', '')
 
 def store_temperature_data():
     '''Function to upload temperature data to MinIO.'''
+    if not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY:
+        return "Error: MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set\n"
+
     try:
         client = Minio(f"{MINIO_HOST}:{MINIO_PORT}",
             access_key=MINIO_ACCESS_KEY,

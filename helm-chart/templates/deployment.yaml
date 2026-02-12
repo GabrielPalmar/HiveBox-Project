@@ -40,6 +40,16 @@ spec:
               value: {{ .Values.services.redis | quote }}
             - name: MINIO_HOST
               value: {{ .Values.services.minio | quote }}
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: secret-key
           securityContext:
             {{- include "common.containerSecurityContext" . | nindent 12 }}
           resources:
@@ -130,9 +140,15 @@ spec:
           command: ["minio", "server", "/data"]
           env:
             - name: MINIO_ROOT_USER
-              value: {{ .Values.minio.accessKey | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: access-key
             - name: MINIO_ROOT_PASSWORD
-              value: {{ .Values.minio.secretKey | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: secret-key
           securityContext:
             {{- include "common.containerSecurityContext" . | nindent 12 }}
           resources:

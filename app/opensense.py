@@ -9,8 +9,6 @@ from app.config import create_redis_client, CACHE_TTL
 # Use shared Redis client
 redis_client, REDIS_AVAILABLE = create_redis_client()
 
-_sensor_stats = {"total_sensors": 0, "null_count": 0}
-
 def classify_temperature(average):
     '''Classify temperature based on ranges using dictionary approach'''
     # Define temperature ranges and their classifications
@@ -135,11 +133,11 @@ def get_temperature():
         return f"Error: API request failed - {e}\n", {"total_sensors": 0, "null_count": 0}
 
     # Process the data (keeping the existing logic)
-    _sensor_stats["total_sensors"] = sum(1 for d in data if isinstance(d, dict) and "sensors" in d)
+    sensor_stats = {"total_sensors": 0, "null_count": 0}
+    sensor_stats["total_sensors"] = sum(1 for d in data if isinstance(d, dict) and "sensors" in d)
     res = [d.get('sensors') for d in data if isinstance(d, dict) and 'sensors' in d]
 
     temp_list = []
-    _sensor_stats["null_count"] = 0
 
     for sensor_list in res:
         for measure in sensor_list:
@@ -149,9 +147,9 @@ def get_temperature():
                     try:
                         temp_list.append(float(last['value']))
                     except (TypeError, ValueError):
-                        _sensor_stats["null_count"] += 1
+                        sensor_stats["null_count"] += 1
                 else:
-                    _sensor_stats["null_count"] += 1
+                    sensor_stats["null_count"] += 1
 
     average = sum(temp_list) / len(temp_list) if temp_list else 0.0
 
@@ -169,4 +167,4 @@ def get_temperature():
         except redis.RedisError as e:
             print(f"Redis error while caching data: {e}")
 
-    return result, _sensor_stats
+    return result, sensor_stats
