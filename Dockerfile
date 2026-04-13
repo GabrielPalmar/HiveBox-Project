@@ -1,4 +1,4 @@
-FROM python:3.14.3-alpine@sha256:faee120f7885a06fcc9677922331391fa690d911c020abb9e8025ff3d908e510
+FROM python:3.15.0a8-alpine@sha256:b2d3bdf6ed31c7b77e564b0c21a0a7d32a2da31bded6e14b2a0947a675f869bd
 
 RUN addgroup -S appgroup && adduser -S -G appgroup appuser
 
